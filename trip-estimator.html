@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Trip Cost Estimator</title>
+<style>
+  :root {
+    --bg:#0b1220; --panel:#121a2b; --ink:#e9eef7; --ink-dim:#9fb0cf;
+    --accent:#62a4ff; --accent-2:#80ffa9; --danger:#ff6b6b; --border:#23304a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+  h1{font-size:1.6rem;margin:0 0 16px}
+  .grid{display:grid;gap:16px}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px}
+  .subhead{color:var(--ink-dim);font-weight:600;margin-bottom:10px;letter-spacing:.02em}
+  label{display:block;font-size:.9rem;color:var(--ink-dim);margin-bottom:6px}
+  input[type="text"],input[type="number"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#0e1626;color:var(--ink)}
+  input::placeholder{color:#6f80a3}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left}
+  th{color:var(--ink-dim);font-weight:600}
+  .right{text-align:right}
+  .muted{color:var(--ink-dim)}
+  .btnbar{display:flex;gap:10px;flex-wrap:wrap}
+  button{appearance:none;border:1px solid var(--border);background:#13203a;color:var(--ink);
+    padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600}
+  button.primary{background:linear-gradient(180deg,#1b3b6a,#142d52);border-color:#21406f}
+  button.secondary{background:#161f33}
+  button.ghost{background:transparent}
+  button.danger{background:#2a1212;border-color:#522a2a;color:#ffdede}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+  .kpi .card{background:#0d172b;border:1px solid var(--border);border-radius:12px;padding:12px}
+  .kpi .label{color:var(--ink-dim);font-size:.85rem}
+  .kpi .value{font-size:1.25rem;font-weight:700;margin-top:2px}
+  .total{font-size:1.6rem;font-weight:800;color:var(--accent-2)}
+  details{border:1px solid var(--border);border-radius:10px;padding:8px 12px;background:#0e1626}
+  details>summary{cursor:pointer;font-weight:600;color:var(--ink-dim);outline:none}
+  details[open]{background:#0f1a2c}
+  .warn{color:var(--danger);font-size:.92rem;margin-top:8px}
+  .copyout{white-space:pre-wrap;background:#0e1626;border:1px dashed var(--border);border-radius:10px;padding:10px;color:var(--ink-dim);margin-top:10px}
+  @media (max-width:900px){.row,.row-3,.row-4,.kpi{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Trip Cost Estimator</h1>
+
+  <div class="grid">
+    <!-- 1) FLIGHT DATA -->
+    <section class="panel" id="flightDataPanel">
+      <div class="subhead">Flight Data — Legs (ForeFlight planned time & fuel)</div>
+      <table aria-label="Leg entries">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Time (HH:MM)</th>
+            <th>Fuel (lb)</th>
+            <th>Note (optional)</th>
+            <th class="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="legsBody"></tbody>
+      </table>
+      <div class="btnbar" style="margin-top:10px">
+        <button class="secondary" id="addLegBtn">+ Add Leg</button>
+        <button class="ghost" id="clearLegsBtn">Reset Legs</button>
+      </div>
+
+      <div class="row-3 kpi">
+        <div class="card"><div class="label">Total Time</div><div class="value" id="totalTimeHHMM">0:00</div></div>
+        <div class="card"><div class="label">Total Hours (decimal)</div><div class="value" id="totalHoursDec">0.00</div></div>
+        <div class="card"><div class="label">Total Fuel</div><div class="value"><span id="totalFuelLb">0</span> lb • <span id="totalFuelGal">0.0</span> gal</div></div>
+      </div>
+
+      <details style="margin-top:12px">
+        <summary>Fuel Parameters</summary>
+        <div class="row-3" style="margin-top:8px">
+          <div>
+            <label for="jetADensity">Jet-A Density (lb/gal)</label>
+            <input type="number" id="jetADensity" inputmode="decimal" step="0.01" min="5.5" max="7.0" value="6.7" />
+          </div>
+          <div>
+            <label for="fuelPrice">Fuel Price (USD/gal)</label>
+            <input type="number" id="fuelPrice" inputmode="decimal" placeholder="5.25" min="0" step="0.01" />
+          </div>
+          <div>
+            <label for="fuelUpliftPct">Fuel Uplift %</label>
+            <input type="number" id="fuelUpliftPct" inputmode="numeric" placeholder="0" min="0" step="1" />
+          </div>
+        </div>
+      </details>
+      <div id="flightWarn" class="warn" style="display:none"></div>
+    </section>
+
+    <!-- 2) HOURLY PROGRAMS -->
+    <section class="panel" id="hourlyProgramsPanel">
+      <div class="subhead">Hourly Programs & Reserves</div>
+      <div class="row-4">
+        <div>
+          <label for="ratePrograms">Maintenance Programs (USD/hr)</label>
+          <input type="number" id="ratePrograms" inputmode="decimal" placeholder="650" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="addlHourly">Additional Hourly (USD/hr)</label>
+          <input type="number" id="addlHourly" inputmode="decimal" placeholder="120" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="engineReserveHourly">Engine/APU Reserve (USD/hr) <span class="muted">(optional)</span></label>
+          <input type="number" id="engineReserveHourly" inputmode="decimal" placeholder="0" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="crewHourlyPay">Crew Hourly Pay (USD/hr/person) <span class="muted">(optional)</span></label>
+          <input type="number" id="crewHourlyPay" inputmode="decimal" placeholder="0" min="0" step="0.01" />
+        </div>
+      </div>
+    </section>
+
+    <!-- 3) CREW EXPENSES -->
+    <section class="panel" id="crewPanel">
+      <div class="subhead">Crew Expenses (per day, per person)</div>
+      <div class="row-4">
+        <div>
+          <label for="crewCount">Number of Crew</label>
+          <input type="number" id="crewCount" inputmode="numeric" placeholder="2" min="0" step="1" />
+        </div>
+        <div>
+          <label for="tripDays">Trip Days (calendar)</label>
+          <input type="number" id="tripDays" inputmode="numeric" placeholder="2" min="0" step="1" />
+        </div>
+        <div>
+          <label for="hotelRate">Hotel / night / person (USD)</label>
+          <input type="number" id="hotelRate" inputmode="decimal" placeholder="220" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="mealsPerDay">Meals / day / person (USD)</label>
+          <input type="number" id="mealsPerDay" inputmode="decimal" placeholder="90" min="0" step="0.01" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label for="transportPerDay">Ground Transport / day / person (USD)</label>
+          <input type="number" id="transportPerDay" inputmode="decimal" placeholder="60" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="crewPerDiemOverride">Per-Diem Override (USD/day/person) <span class="muted">(optional; overrides meals+transport)</span></label>
+          <input type="number" id="crewPerDiemOverride" inputmode="decimal" placeholder="0" min="0" step="0.01" />
+        </div>
+      </div>
+    </section>
+
+    <!-- 4) AIRPORT & GROUND -->
+    <section class="panel" id="airportPanel">
+      <div class="subhead">Airport & Ground Costs</div>
+      <div class="row-4">
+        <div>
+          <label for="landingFeePerLeg">Landing Fee / leg (USD)</label>
+          <input type="number" id="landingFeePerLeg" inputmode="decimal" placeholder="100" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="handlingPerStop">Handling Fee / stop (USD)</label>
+          <input type="number" id="handlingPerStop" inputmode="decimal" placeholder="250" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="rampParkingPerNight">Ramp / Parking / night (USD)</label>
+          <input type="number" id="rampParkingPerNight" inputmode="decimal" placeholder="150" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="hangarPerNight">Hangar / night (USD)</label>
+          <input type="number" id="hangarPerNight" inputmode="decimal" placeholder="350" min="0" step="0.01" />
+        </div>
+      </div>
+      <div class="row-4" style="margin-top:8px">
+        <div>
+          <label for="cateringFlat">Catering (flat, USD)</label>
+          <input type="number" id="cateringFlat" inputmode="decimal" placeholder="150" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="paxGroundTransport">Passenger Ground Transport (USD)</label>
+          <input type="number" id="paxGroundTransport" inputmode="decimal" placeholder="250" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="customsHandling">Customs / Handling (intl, USD)</label>
+          <input type="number" id="customsHandling" inputmode="decimal" placeholder="0" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="parkingNights">Parking Nights</label>
+          <input type="number" id="parkingNights" inputmode="numeric" placeholder="0" min="0" step="1" />
+        </div>
+      </div>
+    </section>
+
+    <!-- 5) MISC / INDIRECT -->
+    <section class="panel" id="miscPanel">
+      <div class="subhead">Miscellaneous & Indirect</div>
+      <div class="row-4">
+        <div>
+          <label for="tripCoordFee">Trip Coordination (USD)</label>
+          <input type="number" id="tripCoordFee" inputmode="decimal" placeholder="200" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="managementFee">Management Fee (USD)</label>
+          <input type="number" id="managementFee" inputmode="decimal" placeholder="0" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="maintContingency">Maintenance Contingency (USD)</label>
+          <input type="number" id="maintContingency" inputmode="decimal" placeholder="150" min="0" step="0.01" />
+        </div>
+        <div>
+          <label for="taxMarkupPct">Tax / Markup %</label>
+          <input type="number" id="taxMarkupPct" inputmode="numeric" placeholder="0" min="0" step="0.1" />
+        </div>
+      </div>
+    </section>
+
+    <!-- 6) OUTPUTS -->
+    <section class="panel" id="outputsPanel">
+      <div class="subhead">Estimate — Outputs</div>
+      <table aria-label="Outputs">
+        <tbody>
+          <tr><td class="muted">Hourly Subtotal</td><td class="right" id="outHourlySubtotal">$0.00</td></tr>
+          <tr><td class="muted">Fuel Subtotal</td><td class="right" id="outFuelSubtotal">$0.00</td></tr>
+          <tr><td class="muted">Crew Subtotal</td><td class="right" id="outCrewSubtotal">$0.00</td></tr>
+          <tr><td class="muted">Airport & Ground Subtotal</td><td class="right" id="outAirportSubtotal">$0.00</td></tr>
+          <tr><td class="muted">Miscellaneous Subtotal</td><td class="right" id="outMiscSubtotal">$0.00</td></tr>
+          <tr><th class="right">Pre-Tax Subtotal</th><th class="right" id="outPreTax">$0.00</th></tr>
+          <tr><td class="muted">Tax/Markup</td><td class="right" id="outTax">$0.00</td></tr>
+          <tr><th class="right">Estimated Grand Total</th><th class="right total" id="outGrandTotal">$0.00</th></tr>
+        </tbody>
+      </table>
+      <div class="row" style="margin-top:8px">
+        <div><span class="muted">Cost per Hour:</span> <strong id="outCostPerHour">$0.00</strong></div>
+        <div class="right"><span class="muted">Cost per Leg:</span> <strong id="outCostPerLeg">$0.00</strong></div>
+      </div>
+      <div id="warn" class="warn" style="display:none"></div>
+      <div class="copyout" id="copyPreview" style="display:none"></div>
+    </section>
+
+    <!-- ACTIONS -->
+    <section class="panel" id="actionsPanel">
+      <div class="subhead">Actions</div>
+      <div class="btnbar">
+        <button class="primary" id="calcBtn">Calculate</button>
+        <button class="secondary" id="copyBtn">Copy Summary</button>
+        <button class="ghost" id="resetAllBtn">Reset All</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ---------- DOM helpers ----------
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const money = n => new Intl.NumberFormat(undefined, { style:'currency', currency:'USD', maximumFractionDigits: 2 }).format(n || 0);
+
+  // ---------- Legs table ----------
+  const legsBody = $('#legsBody');
+  const addLegBtn = $('#addLegBtn');
+  const clearLegsBtn = $('#clearLegsBtn');
+
+  function addLegRow(timeVal = '', fuelLbVal = '', noteVal = '') {
+    const idx = legsBody.children.length + 1;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="muted">Leg ${idx}</td>
+      <td><input class="leg-time" type="text" placeholder="1:15" value="${timeVal}"></td>
+      <td><input class="leg-fuel" type="number" placeholder="3200" min="0" step="1" value="${fuelLbVal}"></td>
+      <td><input class="leg-note" type="text" placeholder="PDX → SFO" value="${noteVal}"></td>
+      <td class="right"><button class="danger btn-del">Remove</button></td>`;
+    legsBody.appendChild(tr);
+
+    tr.querySelector('.btn-del').addEventListener('click', () => {
+      tr.remove();
+      [...legsBody.children].forEach((r,i)=>r.children[0].textContent=`Leg ${i+1}`);
+      recalc();
+    });
+
+    tr.querySelector('.leg-time').addEventListener('input', recalc);
+    tr.querySelector('.leg-time').addEventListener('blur', e => {
+      const mins = parseHHMMtoMinutes(e.target.value);
+      if (mins != null) e.target.value = minutesToHHMM(mins);
+    });
+    tr.querySelector('.leg-fuel').addEventListener('input', recalc);
+    tr.querySelector('.leg-note').addEventListener('input', () => {}); // note is cosmetic
+  }
+
+  addLegBtn.addEventListener('click', () => addLegRow());
+  clearLegsBtn.addEventListener('click', () => { legsBody.innerHTML=''; addLegRow(); recalc(); });
+
+  // ---------- Parsing ----------
+  function parseHHMMtoMinutes(str) {
+    if (!str) return 0;
+    const s = String(str).trim();
+    if (/^\d+:\d{1,2}$/.test(s)) {
+      const [h, m] = s.split(':').map(Number);
+      if (m >= 60) return null;
+      return h * 60 + m;
+    }
+    return null; // accept HH:MM only (explicit)
+  }
+  function minutesToHHMM(mins) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${h}:${String(m).padStart(2,'0')}`;
+  }
+  function num(id) {
+    const el = document.getElementById(id);
+    if (!el) return 0;
+    const v = (el.value ?? '').toString().trim();
+    if (v === '') return 0;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  // ---------- Core recalc ----------
+  function recalc() {
+    // Totals from legs
+    let totalMins = 0, totalLb = 0, legCount = legsBody.children.length;
+    let invalid = false;
+
+    $$('.leg-time').forEach(inp => {
+      const mins = parseHHMMtoMinutes(inp.value);
+      if (mins === null) invalid = true; else totalMins += mins;
+    });
+    $$('.leg-fuel').forEach(inp => {
+      const lb = inp.value === '' ? 0 : Number(inp.value);
+      if (!Number.isFinite(lb) || lb < 0) invalid = true; else totalLb += lb;
+    });
+
+    const density = num('jetADensity') || 6.7;
+    const totalHours = totalMins / 60;
+    const totalGal = density > 0 ? totalLb / density : 0;
+
+    // Write KPIs
+    $('#totalTimeHHMM').textContent = minutesToHHMM(totalMins);
+    $('#totalHoursDec').textContent = totalHours.toFixed(2);
+    $('#totalFuelLb').textContent = Math.round(totalLb);
+    $('#totalFuelGal').textContent = totalGal.toFixed(1);
+
+    // Fuel costs
+    const fuelPrice = num('fuelPrice');
+    const fuelUpliftPct = num('fuelUpliftPct');
+    let fuelCost = totalGal * fuelPrice;
+    if (fuelUpliftPct > 0) fuelCost *= (1 + fuelUpliftPct/100);
+
+    // Hourly buckets
+    const ratePrograms = num('ratePrograms');
+    const addlHourly = num('addlHourly');
+    const engineReserveHourly = num('engineReserveHourly');
+    const crewHourlyPay = num('crewHourlyPay');
+    const crewCount = num('crewCount');
+
+    const hourlySubtotal =
+      (ratePrograms + addlHourly + engineReserveHourly) * totalHours
+      + (crewHourlyPay * crewCount * totalHours);
+
+    // Crew daily costs
+    const tripDays = num('tripDays');
+    const hotelRate = num('hotelRate');
+    const mealsPerDay = num('mealsPerDay');
+    const transportPerDay = num('transportPerDay');
+    const perDiemOverride = num('crewPerDiemOverride');
+
+    const perPersonDaily =
+      (hotelRate) + (perDiemOverride > 0 ? perDiemOverride : (mealsPerDay + transportPerDay));
+    const crewSubtotal = crewCount * tripDays * perPersonDaily;
+
+    // Airport & Ground
+    const landingFeePerLeg = num('landingFeePerLeg');
+    const handlingPerStop = num('handlingPerStop');
+    const rampParkingPerNight = num('rampParkingPerNight');
+    const hangarPerNight = num('hangarPerNight');
+    const cateringFlat = num('cateringFlat');
+    const paxGroundTransport = num('paxGroundTransport');
+    const customsHandling = num('customsHandling');
+    const parkingNights = num('parkingNights');
+
+    // Assumptions: one landing per leg → landing fees = legs
+    // Handling "per stop" → assume one per arrival (≈ legs). Adjust later if needed.
+    const airportSubtotal =
+      (landingFeePerLeg * legCount) +
+      (handlingPerStop * legCount) +
+      (parkingNights * (rampParkingPerNight + hangarPerNight)) +
+      cateringFlat + paxGroundTransport + customsHandling;
+
+    // Misc / Indirect
+    const tripCoordFee = num('tripCoordFee');
+    const managementFee = num('managementFee');
+    const maintContingency = num('maintContingency');
+    const miscSubtotal = tripCoordFee + managementFee + maintContingency;
+
+    // Pre-tax subtotal, tax/markup, grand
+    const preTax = hourlySubtotal + fuelCost + crewSubtotal + airportSubtotal + miscSubtotal;
+    const taxPct = num('taxMarkupPct');
+    const taxAmt = preTax * (taxPct/100);
+    const grand = preTax + taxAmt;
+
+    // Outputs
+    $('#outHourlySubtotal').textContent = money(hourlySubtotal);
+    $('#outFuelSubtotal').textContent = money(fuelCost);
+    $('#outCrewSubtotal').textContent = money(crewSubtotal);
+    $('#outAirportSubtotal').textContent = money(airportSubtotal);
+    $('#outMiscSubtotal').textContent = money(miscSubtotal);
+    $('#outPreTax').textContent = money(preTax);
+    $('#outTax').textContent = money(taxAmt);
+    $('#outGrandTotal').textContent = money(grand);
+
+    $('#outCostPerHour').textContent = totalHours > 0 ? money(grand / totalHours) : '$0.00';
+    $('#outCostPerLeg').textContent = legCount > 0 ? money(grand / legCount) : '$0.00';
+
+    // Warnings
+    const warn = $('#warn');
+    const flightWarn = $('#flightWarn');
+    flightWarn.style.display = invalid ? 'block' : 'none';
+    flightWarn.textContent = invalid ? 'Check leg entries (HH:MM time, non-negative fuel lb).' : '';
+    const soft = [];
+    if (totalHours === 0) soft.push('Total time is 0.');
+    if (totalLb === 0) soft.push('Total fuel is 0 lb.');
+    if (fuelPrice === 0 && totalGal > 0) soft.push('Fuel price is 0.');
+    if (crewCount > 0 && tripDays === 0) soft.push('Crew count set but trip days is 0.');
+    warn.style.display = soft.length ? 'block' : 'none';
+    warn.textContent = soft.join(' ');
+  }
+
+  // ---------- Summary copy ----------
+  function buildSummary() {
+    const legs = $$('#legsBody tr').map((tr, i) => {
+      const t = tr.querySelector('.leg-time').value || '0:00';
+      const lb = tr.querySelector('.leg-fuel').value || '0';
+      const note = tr.querySelector('.leg-note').value || '';
+      const density = num('jetADensity') || 6.7;
+      const gal = density > 0 ? (Number(lb)/density) : 0;
+      return `- Leg ${i+1}: ${t}  (${Math.round(Number(lb))} lb / ${gal.toFixed(1)} gal)${note ? ` — ${note}`:''}`;
+    }).join('\n');
+
+    const totalTime = $('#totalTimeHHMM').textContent;
+    const totalHours = $('#totalHoursDec').textContent;
+    const totalLb = $('#totalFuelLb').textContent;
+    const totalGal = $('#totalFuelGal').textContent;
+
+    const fuelPrice = num('fuelPrice');
+    const fuelUpliftPct = num('fuelUpliftPct');
+    const fuelLine = `Fuel: ${totalLb} lb → ${totalGal} gal @ ${money(fuelPrice)}/gal${fuelUpliftPct>0?` (+${fuelUpliftPct}% uplift)`:''} → ${$('#outFuelSubtotal').textContent}`;
+
+    const text =
+`Trip Cost Estimate
+
+Legs:
+${legs}
+
+Totals:
+- Time: ${totalTime} (${totalHours} h)
+- ${fuelLine}
+- Programs/Hourly: ${$('#outHourlySubtotal').textContent}
+- Crew: ${$('#outCrewSubtotal').textContent}
+- Airport & Ground: ${$('#outAirportSubtotal').textContent}
+- Misc: ${$('#outMiscSubtotal').textContent}
+- Pre-Tax Subtotal: ${$('#outPreTax').textContent}
+- Tax/Markup: ${$('#outTax').textContent}
+
+Estimated Total: ${$('#outGrandTotal').textContent}
+Notes: Estimate only; subject to actuals.`;
+
+    return text;
+  }
+
+  function copySummary() {
+    // ensure numbers are fresh
+    recalc();
+    const summary = buildSummary();
+    const box = $('#copyPreview');
+    box.style.display = 'block';
+    box.textContent = summary;
+
+    navigator.clipboard.writeText(summary).then(() => {
+      const btn = $('#copyBtn');
+      btn.textContent = 'Copied!';
+      setTimeout(()=>btn.textContent = 'Copy Summary', 1200);
+    }).catch(() => {
+      // fallback: select the preview box
+      const r = document.createRange();
+      r.selectNodeContents(box);
+      const s = window.getSelection();
+      s.removeAllRanges(); s.addRange(r);
+    });
+  }
+
+  // ---------- Reset ----------
+  function resetAll() {
+    // clear legs & seed one row
+    legsBody.innerHTML = '';
+    addLegRow();
+    // clear inputs
+    [
+      'jetADensity','fuelPrice','fuelUpliftPct',
+      'ratePrograms','addlHourly','engineReserveHourly','crewHourlyPay',
+      'crewCount','tripDays','hotelRate','mealsPerDay','transportPerDay','crewPerDiemOverride',
+      'landingFeePerLeg','handlingPerStop','rampParkingPerNight','hangarPerNight',
+      'cateringFlat','paxGroundTransport','customsHandling','parkingNights',
+      'tripCoordFee','managementFee','maintContingency','taxMarkupPct'
+    ].forEach(id => { const el = document.getElementById(id); if (el && el !== document.activeElement) el.value = ''; });
+
+    // outputs
+    $('#outHourlySubtotal').textContent = '$0.00';
+    $('#outFuelSubtotal').textContent = '$0.00';
+    $('#outCrewSubtotal').textContent = '$0.00';
+    $('#outAirportSubtotal').textContent = '$0.00';
+    $('#outMiscSubtotal').textContent = '$0.00';
+    $('#outPreTax').textContent = '$0.00';
+    $('#outTax').textContent = '$0.00';
+    $('#outGrandTotal').textContent = '$0.00';
+    $('#outCostPerHour').textContent = '$0.00';
+    $('#outCostPerLeg').textContent = '$0.00';
+    $('#warn').style.display = 'none';
+    $('#flightWarn').style.display = 'none';
+    const box = $('#copyPreview'); box.style.display = 'none'; box.textContent = '';
+    recalc();
+  }
+
+  // ---------- Events ----------
+  $('#calcBtn').addEventListener('click', recalc);
+  $('#copyBtn').addEventListener('click', copySummary);
+  $('#resetAllBtn').addEventListener('click', resetAll);
+
+  // Recalc on any input change
+  const recalcIds = [
+    'jetADensity','fuelPrice','fuelUpliftPct',
+    'ratePrograms','addlHourly','engineReserveHourly','crewHourlyPay',
+    'crewCount','tripDays','hotelRate','mealsPerDay','transportPerDay','crewPerDiemOverride',
+    'landingFeePerLeg','handlingPerStop','rampParkingPerNight','hangarPerNight',
+    'cateringFlat','paxGroundTransport','customsHandling','parkingNights',
+    'tripCoordFee','managementFee','maintContingency','taxMarkupPct'
+  ];
+  recalcIds.forEach(id => document.getElementById(id).addEventListener('input', recalc));
+
+  // Seed with two example legs + defaults to show behavior
+  addLegRow('1:15','3200','PDX → SFO');
+  addLegRow('0:50','2400','SFO → PDX');
+  recalc();
+})();
+</script>
+</body>
+</html>
