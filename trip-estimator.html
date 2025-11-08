@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Trip Cost Estimator</title>
+<title>Trip Estimator</title>
 <style>
   :root {
     --bg:#0b1220; --panel:#121a2b; --ink:#e9eef7; --ink-dim:#9fb0cf;
@@ -43,13 +43,13 @@
   details>summary{cursor:pointer;font-weight:600;color:var(--ink-dim);outline:none}
   details[open]{background:#0f1a2c}
   .warn{color:var(--danger);font-size:.92rem;margin-top:8px}
-  .copyout{white-space:pre-wrap;background:#0e1626;border:1px dashed var(--border);border-radius:10px;padding:10px;color:var(--ink-dim);margin-top:10px}
+  .copyout{white-space:pre-wrap;background:#0e1626;border:1px dashed var(--border);border-radius:10px;padding:10px;color:#c5d2ec;margin-top:10px}
   @media (max-width:900px){.row,.row-3,.row-4,.kpi{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Trip Cost Estimator</h1>
+  <h1>Trip Estimator</h1>
 
   <div class="grid">
     <!-- 1) FLIGHT DATA -->
@@ -121,9 +121,9 @@
       </div>
     </section>
 
-    <!-- 3) CREW EXPENSES -->
+    <!-- 3) CREW LIVING EXPENSES -->
     <section class="panel" id="crewPanel">
-      <div class="subhead">Crew Expenses (per day, per person)</div>
+      <div class="subhead">Crew Living Expenses (per day, per person)</div>
       <div class="row-4">
         <div>
           <label for="crewCount">Number of Crew</label>
@@ -152,6 +152,27 @@
           <input type="number" id="crewPerDiemOverride" inputmode="decimal" placeholder="0" min="0" step="0.01" />
         </div>
       </div>
+    </section>
+
+    <!-- 3b) CREW DAY RATES -->
+    <section class="panel" id="crewRatesPanel">
+      <div class="subhead">Crew Day Rates (service fees per day)</div>
+      <table aria-label="Crew day rates">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Daily Rate (USD)</th>
+            <th>People</th>
+            <th class="right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="crewRatesBody"></tbody>
+      </table>
+      <div class="btnbar" style="margin-top:10px">
+        <button class="secondary" id="addCrewRateBtn">+ Add Role</button>
+        <button class="ghost" id="clearCrewRatesBtn">Reset Roles</button>
+      </div>
+      <div class="muted" style="margin-top:6px">Defaults to 2 Pilots × $1,500/day. Add a Flight Attendant if needed.</div>
     </section>
 
     <!-- 4) AIRPORT & GROUND -->
@@ -225,7 +246,12 @@
         <tbody>
           <tr><td class="muted">Hourly Subtotal</td><td class="right" id="outHourlySubtotal">$0.00</td></tr>
           <tr><td class="muted">Fuel Subtotal</td><td class="right" id="outFuelSubtotal">$0.00</td></tr>
+
+          <!-- New crew breakdown rows -->
+          <tr><td class="muted">Crew Service (day rates)</td><td class="right" id="outCrewService">$0.00</td></tr>
+          <tr><td class="muted">Crew Living (hotel/meals/transport)</td><td class="right" id="outCrewLiving">$0.00</td></tr>
           <tr><td class="muted">Crew Subtotal</td><td class="right" id="outCrewSubtotal">$0.00</td></tr>
+
           <tr><td class="muted">Airport & Ground Subtotal</td><td class="right" id="outAirportSubtotal">$0.00</td></tr>
           <tr><td class="muted">Miscellaneous Subtotal</td><td class="right" id="outMiscSubtotal">$0.00</td></tr>
           <tr><th class="right">Pre-Tax Subtotal</th><th class="right" id="outPreTax">$0.00</th></tr>
@@ -262,8 +288,8 @@
 
   // ---------- Legs table ----------
   const legsBody = $('#legsBody');
-  const addLegBtn = $('#addLegBtn');
-  const clearLegsBtn = $('#clearLegsBtn');
+  $('#addLegBtn').addEventListener('click', () => addLegRow());
+  $('#clearLegsBtn').addEventListener('click', () => { legsBody.innerHTML=''; addLegRow(); recalc(); });
 
   function addLegRow(timeVal = '', fuelLbVal = '', noteVal = '') {
     const idx = legsBody.children.length + 1;
@@ -288,11 +314,31 @@
       if (mins != null) e.target.value = minutesToHHMM(mins);
     });
     tr.querySelector('.leg-fuel').addEventListener('input', recalc);
-    tr.querySelector('.leg-note').addEventListener('input', () => {}); // note is cosmetic
   }
 
-  addLegBtn.addEventListener('click', () => addLegRow());
-  clearLegsBtn.addEventListener('click', () => { legsBody.innerHTML=''; addLegRow(); recalc(); });
+  // ---------- Crew Day Rates table ----------
+  const crewRatesBody = $('#crewRatesBody');
+  $('#addCrewRateBtn').addEventListener('click', () => addCrewRateRow('Role', 0, 1));
+  $('#clearCrewRatesBtn').addEventListener('click', () => { crewRatesBody.innerHTML=''; seedDefaultCrewRates(); recalc(); });
+
+  function addCrewRateRow(role = 'Pilot', daily = 1500, people = 2) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input class="crew-role" type="text" value="${role}"></td>
+      <td><input class="crew-rate" type="number" min="0" step="0.01" value="${daily}"></td>
+      <td><input class="crew-count" type="number" min="0" step="1" value="${people}"></td>
+      <td class="right"><button class="danger btn-del-crew-rate">Remove</button></td>
+    `;
+    crewRatesBody.appendChild(tr);
+    tr.querySelector('.btn-del-crew-rate').addEventListener('click', () => { tr.remove(); recalc(); });
+    tr.querySelector('.crew-rate').addEventListener('input', recalc);
+    tr.querySelector('.crew-count').addEventListener('input', recalc);
+  }
+
+  function seedDefaultCrewRates() {
+    // Default: 2 pilots @ $1,500/day
+    addCrewRateRow('Pilot', 1500, 2);
+  }
 
   // ---------- Parsing ----------
   function parseHHMMtoMinutes(str) {
@@ -303,7 +349,7 @@
       if (m >= 60) return null;
       return h * 60 + m;
     }
-    return null; // accept HH:MM only (explicit)
+    return null; // HH:MM only
   }
   function minutesToHHMM(mins) {
     const h = Math.floor(mins / 60);
@@ -338,7 +384,7 @@
     const totalHours = totalMins / 60;
     const totalGal = density > 0 ? totalLb / density : 0;
 
-    // Write KPIs
+    // KPIs
     $('#totalTimeHHMM').textContent = minutesToHHMM(totalMins);
     $('#totalHoursDec').textContent = totalHours.toFixed(2);
     $('#totalFuelLb').textContent = Math.round(totalLb);
@@ -361,16 +407,28 @@
       (ratePrograms + addlHourly + engineReserveHourly) * totalHours
       + (crewHourlyPay * crewCount * totalHours);
 
-    // Crew daily costs
+    // Crew living (lodging/meals/transport or per-diem override)
     const tripDays = num('tripDays');
     const hotelRate = num('hotelRate');
     const mealsPerDay = num('mealsPerDay');
     const transportPerDay = num('transportPerDay');
     const perDiemOverride = num('crewPerDiemOverride');
 
-    const perPersonDaily =
+    const perPersonDailyLiving =
       (hotelRate) + (perDiemOverride > 0 ? perDiemOverride : (mealsPerDay + transportPerDay));
-    const crewSubtotal = crewCount * tripDays * perPersonDaily;
+    const crewLiving = crewCount * tripDays * perPersonDailyLiving;
+
+    // Crew service (day rates)
+    let crewService = 0;
+    $$('#crewRatesBody tr').forEach(tr => {
+      const rate = Number(tr.querySelector('.crew-rate')?.value || 0);
+      const count = Number(tr.querySelector('.crew-count')?.value || 0);
+      if (Number.isFinite(rate) && Number.isFinite(count) && tripDays > 0) {
+        crewService += rate * count * tripDays;
+      }
+    });
+
+    const crewSubtotal = crewService + crewLiving;
 
     // Airport & Ground
     const landingFeePerLeg = num('landingFeePerLeg');
@@ -382,8 +440,7 @@
     const customsHandling = num('customsHandling');
     const parkingNights = num('parkingNights');
 
-    // Assumptions: one landing per leg → landing fees = legs
-    // Handling "per stop" → assume one per arrival (≈ legs). Adjust later if needed.
+    // Assumptions: one landing per leg; one handling per arrival (≈ legs).
     const airportSubtotal =
       (landingFeePerLeg * legCount) +
       (handlingPerStop * legCount) +
@@ -396,7 +453,7 @@
     const maintContingency = num('maintContingency');
     const miscSubtotal = tripCoordFee + managementFee + maintContingency;
 
-    // Pre-tax subtotal, tax/markup, grand
+    // Pre-tax subtotal, tax/markup, grand total
     const preTax = hourlySubtotal + fuelCost + crewSubtotal + airportSubtotal + miscSubtotal;
     const taxPct = num('taxMarkupPct');
     const taxAmt = preTax * (taxPct/100);
@@ -405,6 +462,8 @@
     // Outputs
     $('#outHourlySubtotal').textContent = money(hourlySubtotal);
     $('#outFuelSubtotal').textContent = money(fuelCost);
+    $('#outCrewService').textContent = money(crewService);
+    $('#outCrewLiving').textContent  = money(crewLiving);
     $('#outCrewSubtotal').textContent = money(crewSubtotal);
     $('#outAirportSubtotal').textContent = money(airportSubtotal);
     $('#outMiscSubtotal').textContent = money(miscSubtotal);
@@ -416,11 +475,11 @@
     $('#outCostPerLeg').textContent = legCount > 0 ? money(grand / legCount) : '$0.00';
 
     // Warnings
-    const warn = $('#warn');
     const flightWarn = $('#flightWarn');
+    const warn = $('#warn');
+    const soft = [];
     flightWarn.style.display = invalid ? 'block' : 'none';
     flightWarn.textContent = invalid ? 'Check leg entries (HH:MM time, non-negative fuel lb).' : '';
-    const soft = [];
     if (totalHours === 0) soft.push('Total time is 0.');
     if (totalLb === 0) soft.push('Total fuel is 0 lb.');
     if (fuelPrice === 0 && totalGal > 0) soft.push('Fuel price is 0.');
@@ -458,8 +517,9 @@ ${legs}
 Totals:
 - Time: ${totalTime} (${totalHours} h)
 - ${fuelLine}
-- Programs/Hourly: ${$('#outHourlySubtotal').textContent}
-- Crew: ${$('#outCrewSubtotal').textContent}
+- Hourly Programs/Reserves: ${$('#outHourlySubtotal').textContent}
+- Crew Service (day rates): ${$('#outCrewService').textContent}
+- Crew Living (hotel/meals/transport): ${$('#outCrewLiving').textContent}
 - Airport & Ground: ${$('#outAirportSubtotal').textContent}
 - Misc: ${$('#outMiscSubtotal').textContent}
 - Pre-Tax Subtotal: ${$('#outPreTax').textContent}
@@ -472,8 +532,7 @@ Notes: Estimate only; subject to actuals.`;
   }
 
   function copySummary() {
-    // ensure numbers are fresh
-    recalc();
+    recalc(); // ensure fresh
     const summary = buildSummary();
     const box = $('#copyPreview');
     box.style.display = 'block';
@@ -495,8 +554,12 @@ Notes: Estimate only; subject to actuals.`;
   // ---------- Reset ----------
   function resetAll() {
     // clear legs & seed one row
-    legsBody.innerHTML = '';
+    $('#legsBody').innerHTML = '';
     addLegRow();
+    // clear crew rates & reseed default
+    $('#crewRatesBody').innerHTML = '';
+    seedDefaultCrewRates();
+
     // clear inputs
     [
       'jetADensity','fuelPrice','fuelUpliftPct',
@@ -508,16 +571,10 @@ Notes: Estimate only; subject to actuals.`;
     ].forEach(id => { const el = document.getElementById(id); if (el && el !== document.activeElement) el.value = ''; });
 
     // outputs
-    $('#outHourlySubtotal').textContent = '$0.00';
-    $('#outFuelSubtotal').textContent = '$0.00';
-    $('#outCrewSubtotal').textContent = '$0.00';
-    $('#outAirportSubtotal').textContent = '$0.00';
-    $('#outMiscSubtotal').textContent = '$0.00';
-    $('#outPreTax').textContent = '$0.00';
-    $('#outTax').textContent = '$0.00';
-    $('#outGrandTotal').textContent = '$0.00';
-    $('#outCostPerHour').textContent = '$0.00';
-    $('#outCostPerLeg').textContent = '$0.00';
+    ['outHourlySubtotal','outFuelSubtotal','outCrewService','outCrewLiving','outCrewSubtotal',
+     'outAirportSubtotal','outMiscSubtotal','outPreTax','outTax','outGrandTotal',
+     'outCostPerHour','outCostPerLeg'].forEach(id => document.getElementById(id).textContent = '$0.00');
+
     $('#warn').style.display = 'none';
     $('#flightWarn').style.display = 'none';
     const box = $('#copyPreview'); box.style.display = 'none'; box.textContent = '';
@@ -540,9 +597,10 @@ Notes: Estimate only; subject to actuals.`;
   ];
   recalcIds.forEach(id => document.getElementById(id).addEventListener('input', recalc));
 
-  // Seed with two example legs + defaults to show behavior
+  // ---------- Seed demo data ----------
   addLegRow('1:15','3200','PDX → SFO');
   addLegRow('0:50','2400','SFO → PDX');
+  seedDefaultCrewRates();
   recalc();
 })();
 </script>
