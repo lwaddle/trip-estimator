@@ -17,17 +17,16 @@
   .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px}
   .subhead{color:var(--ink-dim);font-weight:600;margin-bottom:10px;letter-spacing:.02em}
   label{display:block;font-size:.9rem;color:var(--ink-dim);margin-bottom:6px}
-  input[type="text"],input[type="number"],select,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#0e1626;color:var(--ink)}
-  textarea{min-height:96px;resize:vertical}
+  input[type="text"],input[type="number"],select,textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:#0e1626;color:var(--ink)}
   input::placeholder,textarea::placeholder{color:#6f80a3}
+  textarea{min-height:96px;resize:vertical}
   table{width:100%;border-collapse:collapse}
   th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:left}
   th{color:var(--ink-dim);font-weight:600}
   .right{text-align:right}
   .muted{color:var(--ink-dim)}
   .btnbar{display:flex;gap:10px;flex-wrap:wrap}
-  button{appearance:none;border:1px solid var(--border);background:#13203a;color:var(--ink);
-    padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:600}
+  button{appearance:none;border:1px solid var(--border);background:#13203a;color:var(--ink); padding:12px 16px;border-radius:12px;cursor:pointer;font-weight:600}
   button.primary{background:linear-gradient(180deg,#1b3b6a,#142d52);border-color:#21406f}
   button.secondary{background:#161f33}
   button.ghost{background:transparent}
@@ -37,15 +36,42 @@
   .row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
   .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
   .kpi .card{background:#0d172b;border:1px solid var(--border);border-radius:12px;padding:12px}
-  .kpi .label{color:var(--ink-dim);font-size:.85rem}
+  .kpi .label{color:#9fb0cf;font-size:.85rem}
   .kpi .value{font-size:1.25rem;font-weight:700;margin-top:2px}
   .total{font-size:1.6rem;font-weight:800;color:var(--accent-2)}
   details{border:1px solid var(--border);border-radius:10px;padding:8px 12px;background:#0e1626}
-  details>summary{cursor:pointer;font-weight:600;color:var(--ink-dim);outline:none}
+  details>summary{cursor:pointer;font-weight:600;color:#9fb0cf;outline:none}
   details[open]{background:#0f1a2c}
   .warn{color:var(--danger);font-size:.92rem;margin-top:8px}
   .copyout{white-space:pre-wrap;background:#0e1626;border:1px dashed var(--border);border-radius:10px;padding:10px;color:#c5d2ec;margin-top:10px}
+
+  /* Mobile card styles for legs & crew rates */
+  .card-list{display:none}
+  .card{background:#0d172b;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
+  .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .badge{font-size:.85rem;color:#c8d6f0;background:#13203a;border:1px solid var(--border);padding:2px 8px;border-radius:999px}
+  .card .row{grid-template-columns:1fr 1fr}
+
+  /* Sticky bars on mobile */
+  .sticky-bar{position:sticky;bottom:0;background:rgba(13,23,43,.9);backdrop-filter:blur(6px);border:1px solid var(--border);border-radius:12px;padding:10px;margin-top:10px}
+  .sticky-flex{display:flex;align-items:center;justify-content:space-between;gap:8px}
+
   @media (max-width:900px){.row,.row-3,.row-4,.kpi{grid-template-columns:1fr}}
+  @media (max-width:720px){
+    /* Bigger touch targets */
+    input,select,textarea,button{min-height:44px}
+
+    /* Flight legs: table -> cards */
+    #legsTable{display:none}
+    #legsCards{display:block}
+
+    /* Crew rates: table -> cards */
+    #crewRatesTable{display:none}
+    #crewRatesCards{display:block}
+
+    /* Grid simplification */
+    .row,.row-3,.row-4{grid-template-columns:1fr}
+  }
 </style>
 </head>
 <body>
@@ -57,7 +83,7 @@
     <!-- 1) FLIGHT DATA -->
     <section class="panel" id="flightDataPanel">
       <div class="subhead">Flight Data</div>
-      <table aria-label="Leg entries">
+      <table aria-label="Leg entries" id="legsTable">
         <thead>
           <tr>
             <th>#</th>
@@ -70,6 +96,7 @@
         </thead>
         <tbody id="legsBody"></tbody>
       </table>
+      <div id="legsCards" class="card-list" aria-live="polite"></div>
       <div class="btnbar" style="margin-top:10px">
         <button class="secondary" id="addLegBtn">+ Add Leg</button>
         <button class="ghost" id="clearLegsBtn">Reset Legs</button>
@@ -98,13 +125,22 @@
           </div>
         </div>
       </details>
+
+      <div class="sticky-bar" id="addLegSticky" aria-hidden="true">
+        <div class="sticky-flex">
+          <div class="muted">Quick add a leg</div>
+          <button class="secondary" id="addLegBtnSticky">+ Add Leg</button>
+        </div>
+      </div>
+
       <div id="flightWarn" class="warn" style="display:none"></div>
     </section>
 
     <!-- 2) CREW DAY RATES -->
     <section class="panel" id="crewRatesPanel">
       <div class="subhead">Crew Day Rates (service fees per day)</div>
-      <table aria-label="Crew day rates">
+
+      <table aria-label="Crew day rates" id="crewRatesTable">
         <thead>
           <tr>
             <th>Role</th>
@@ -114,6 +150,9 @@
         </thead>
         <tbody id="crewRatesBody"></tbody>
       </table>
+
+      <div id="crewRatesCards" class="card-list" aria-live="polite"></div>
+
       <div class="btnbar" style="margin-top:10px">
         <button class="secondary" id="addCrewRateBtn">+ Add Role</button>
         <button class="ghost" id="clearCrewRatesBtn">Reset Roles</button>
@@ -245,6 +284,16 @@
       </div>
       <div id="warn" class="warn" style="display:none"></div>
       <div class="copyout" id="copyPreview" style="display:none"></div>
+
+      <div class="sticky-bar" id="totalsSticky" aria-hidden="true" style="margin-top:12px">
+        <div class="sticky-flex">
+          <div><span class="muted">Estimated Total:</span> <strong id="outGrandTotalMini">$0.00</strong></div>
+          <div style="display:flex;gap:8px">
+            <button class="secondary" id="calcBtnMini">Calculate</button>
+            <button class="ghost" id="copyBtnMini">Copy</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- 9) ACTIONS -->
@@ -266,106 +315,181 @@
   const $$ = s => Array.from(document.querySelectorAll(s));
   const money = n => new Intl.NumberFormat(undefined, { style:'currency', currency:'USD', maximumFractionDigits: 2 }).format(n || 0);
 
+  // Debounce helper
+  function debounce(fn, wait=120){
+    let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), wait); };
+  }
+  // Forwarder to avoid TDZ / early references
+  let debouncedRecalcImpl = () => {};
+  function debouncedRecalc(){ return debouncedRecalcImpl.apply(this, arguments); }
+
   // === Legs ===
   const legsBody = $('#legsBody');
+  const legsCards = $('#legsCards');
   $('#addLegBtn').addEventListener('click', () => addLegRow());
-  $('#clearLegsBtn').addEventListener('click', () => { legsBody.innerHTML=''; recalc(); });
+  $('#clearLegsBtn').addEventListener('click', () => { legsBody.innerHTML=''; renderLegCards(); recalc(); });
+  $('#addLegBtnSticky').addEventListener('click', () => addLegRow());
 
   function addLegRow(timeVal='', fuelLbVal='0', fromVal='', toVal=''){
     const idx = legsBody.children.length + 1;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="muted">Leg ${idx}</td>
-      <td><input class="leg-from" type="text" value="${fromVal}" placeholder="PDX"></td>
-      <td><input class="leg-to" type="text" value="${toVal}" placeholder="SFO"></td>
-      <td><input class="leg-time" type="text" placeholder="e.g., 1:15" value="${timeVal}"></td>
-      <td><input class="leg-fuel" type="number" min="0" step="1" value="${fuelLbVal}"></td>
-      <td class="right"><button class="danger btn-del">Remove</button></td>`;
+      <td><input class="leg-from" type="text" inputmode="text" maxlength="8" value="${fromVal}" placeholder="PDX"></td>
+      <td><input class="leg-to" type="text" inputmode="text" maxlength="8" value="${toVal}" placeholder="SFO"></td>
+      <td><input class="leg-time" type="text" inputmode="numeric" placeholder="e.g., 1:15" value="${timeVal}"></td>
+      <td><input class="leg-fuel" type="number" inputmode="numeric" min="0" step="1" value="${fuelLbVal}"></td>
+      <td class="right"><button class="danger btn-del" aria-label="Remove leg">Remove</button></td>`;
     legsBody.appendChild(tr);
-    tr.querySelector('.btn-del').addEventListener('click', () => {
-      tr.remove();
-      [...legsBody.children].forEach((r,i)=>r.children[0].textContent=`Leg ${i+1}`);
-      recalc();
-    });
-    tr.querySelector('.leg-time').addEventListener('input', recalc);
+
+    tr.querySelector('.btn-del').addEventListener('click', () => { tr.remove(); renumberLegs(); renderLegCards(); recalc(); });
+    tr.querySelector('.leg-time').addEventListener('input', debouncedRecalc);
     tr.querySelector('.leg-time').addEventListener('blur', e => {
-      const mins = parseHHMMtoMinutes(e.target.value);
-      if (mins != null) e.target.value = minutesToHHMM(mins);
+      const mins = parseHHMMtoMinutes(e.target.value); if (mins != null) e.target.value = minutesToHHMM(mins);
     });
-    tr.querySelector('.leg-fuel').addEventListener('input', recalc);
-    tr.querySelector('.leg-from').addEventListener('input', recalc);
-    tr.querySelector('.leg-to').addEventListener('input', recalc);
+    tr.querySelector('.leg-fuel').addEventListener('input', debouncedRecalc);
+    tr.querySelector('.leg-from').addEventListener('input', debouncedRecalc);
+    tr.querySelector('.leg-to').addEventListener('input', debouncedRecalc);
+
+    renderLegCards();
+  }
+
+  function renumberLegs(){
+    [...legsBody.children].forEach((r,i)=>r.children[0].textContent=`Leg ${i+1}`);
+  }
+
+  function renderLegCards(){
+    legsCards.innerHTML='';
+    const rows = [...legsBody.children];
+    rows.forEach((tr,i)=>{
+      const from = tr.querySelector('.leg-from');
+      const to = tr.querySelector('.leg-to');
+      const time = tr.querySelector('.leg-time');
+      const fuel = tr.querySelector('.leg-fuel');
+      const card = document.createElement('div');
+      card.className='card';
+      card.innerHTML = `
+        <div class="card-header">
+          <span class="badge">Leg ${i+1}</span>
+          <button class="danger" aria-label="Remove leg ${i+1}">Remove</button>
+        </div>
+        <div class="row" style="margin-bottom:8px">
+          <div><label>From</label><input value="${from.value}" aria-label="From" /></div>
+          <div><label>To</label><input value="${to.value}" aria-label="To" /></div>
+        </div>
+        <div class="row">
+          <div><label>Time (HH:MM)</label><input value="${time.value}" inputmode="numeric" aria-label="Time" /></div>
+          <div><label>Fuel (lb)</label><input value="${fuel.value}" inputmode="numeric" aria-label="Fuel" /></div>
+        </div>`;
+
+      const [cFrom,cTo,cTime,cFuel] = card.querySelectorAll('input');
+      const removeBtn = card.querySelector('button');
+
+      // Sync card -> table inputs
+      cFrom.addEventListener('input', e => { from.value = e.target.value; debouncedRecalc(); });
+      cTo.addEventListener('input', e => { to.value = e.target.value; debouncedRecalc(); });
+      cTime.addEventListener('input', e => { time.value = e.target.value; debouncedRecalc(); });
+      cTime.addEventListener('blur', e => { const mins = parseHHMMtoMinutes(e.target.value); if (mins != null){ e.target.value = minutesToHHMM(mins); time.value = e.target.value; }});
+      cFuel.addEventListener('input', e => { fuel.value = e.target.value; debouncedRecalc(); });
+      removeBtn.addEventListener('click', ()=>{ tr.remove(); renumberLegs(); renderLegCards(); recalc(); });
+
+      legsCards.appendChild(card);
+    });
+
+    // Show sticky add bar on mobile only if cards exist
+    $('#addLegSticky').setAttribute('aria-hidden', rows.length ? 'false' : 'true');
   }
 
   // === Crew Day Rates ===
   const crewRatesBody = $('#crewRatesBody');
+  const crewRatesCards = $('#crewRatesCards');
   $('#addCrewRateBtn').addEventListener('click', () => addCrewRateRow('Pilot', 1500));
-  $('#clearCrewRatesBtn').addEventListener('click', () => { crewRatesBody.innerHTML=''; seedDefaultCrewRates(); recalc(); });
+  $('#clearCrewRatesBtn').addEventListener('click', () => { crewRatesBody.innerHTML=''; seedDefaultCrewRates(); renderCrewRateCards(); recalc(); });
 
   function addCrewRateRow(role='Pilot', daily=1500){
     const tr=document.createElement('tr');
     tr.innerHTML=`
       <td>
-        <select class="crew-role">
+        <select class="crew-role" aria-label="Crew role">
           <option ${role==='Pilot'?'selected':''}>Pilot</option>
           <option ${role==='Flight Attendant'?'selected':''}>Flight Attendant</option>
           <option ${role==='Mechanic'?'selected':''}>Mechanic</option>
           <option ${role==='Other'?'selected':''}>Other</option>
         </select>
       </td>
-      <td><input class="crew-rate" type="number" min="0" step="0.01" value="${daily}"></td>
-      <td class="right"><button class="danger btn-del-crew-rate">Remove</button></td>`;
+      <td><input class="crew-rate" type="number" inputmode="numeric" min="0" step="0.01" value="${daily}" aria-label="Daily rate"></td>
+      <td class="right"><button class="danger btn-del-crew-rate" aria-label="Remove crew role">Remove</button></td>`;
     crewRatesBody.appendChild(tr);
-    tr.querySelector('.btn-del-crew-rate').addEventListener('click',()=>{tr.remove();recalc();});
-    tr.querySelector('.crew-rate').addEventListener('input',recalc);
-    tr.querySelector('.crew-role').addEventListener('change',recalc);
+
+    tr.querySelector('.btn-del-crew-rate').addEventListener('click',()=>{tr.remove(); renderCrewRateCards(); recalc();});
+    tr.querySelector('.crew-rate').addEventListener('input', debouncedRecalc);
+    tr.querySelector('.crew-role').addEventListener('change', debouncedRecalc);
+
+    renderCrewRateCards();
   }
+
+  function renderCrewRateCards(){
+    crewRatesCards.innerHTML='';
+    const rows=[...crewRatesBody.children];
+    rows.forEach((tr,i)=>{
+      const roleSel = tr.querySelector('.crew-role');
+      const rateInp = tr.querySelector('.crew-rate');
+      const card=document.createElement('div'); card.className='card';
+      card.innerHTML=`
+        <div class="card-header">
+          <span class="badge">Crew ${i+1}</span>
+          <button class="danger" aria-label="Remove crew ${i+1}">Remove</button>
+        </div>
+        <div class="row">
+          <div>
+            <label>Role</label>
+            <select aria-label="Role">
+              <option>Pilot</option>
+              <option>Flight Attendant</option>
+              <option>Mechanic</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label>Daily Rate</label>
+            <input type="number" inputmode="numeric" min="0" step="0.01" value="${rateInp.value}" aria-label="Daily rate" />
+          </div>
+        </div>`;
+      const cardRole = card.querySelector('select');
+      const cardRate = card.querySelector('input');
+      cardRole.value = roleSel.value;
+      cardRole.addEventListener('change', e=>{ roleSel.value = e.target.value; debouncedRecalc(); });
+      cardRate.addEventListener('input', e=>{ rateInp.value = e.target.value; debouncedRecalc(); });
+      card.querySelector('button').addEventListener('click', ()=>{ tr.remove(); renderCrewRateCards(); recalc(); });
+      crewRatesCards.appendChild(card);
+    });
+  }
+
   function seedDefaultCrewRates(){ addCrewRateRow('Pilot', 1500); addCrewRateRow('Pilot', 1500); }
   function getCrewCountFromRates(){ return $$('#crewRatesBody tr').length; }
 
   // === Utilities ===
   function parseHHMMtoMinutes(str){
-    if (!str) return 0;
-    const s = String(str).trim();
-    if (/^\d+:\d{1,2}$/.test(s)) {
-      const [h, m] = s.split(':').map(Number);
-      if (m >= 60) return null;
-      return h*60 + m;
-    }
-    return null; // enforce HH:MM
+    if (!str) return 0; const s=String(str).trim();
+    if (/^\d+:\d{1,2}$/.test(s)) { const [h,m]=s.split(':').map(Number); if (m>=60) return null; return h*60+m; }
+    return null;
   }
-  function minutesToHHMM(mins){
-    const h=Math.floor(mins/60), m=mins%60;
-    return `${h}:${String(m).padStart(2,'0')}`;
-  }
-  function num(id){
-    const el=document.getElementById(id);
-    if(!el) return 0;
-    const v=(el.value ?? '').toString().trim();
-    if(v==='') return 0;
-    const n=Number(v);
-    return Number.isFinite(n) ? n : 0;
-  }
+  function minutesToHHMM(mins){ const h=Math.floor(mins/60), m=mins%60; return `${h}:${String(m).padStart(2,'0')}`; }
+  function num(id){ const el=document.getElementById(id); if(!el) return 0; const v=(el.value ?? '').toString().trim(); if(v==='') return 0; const n=Number(v); return Number.isFinite(n)?n:0; }
 
   // === Hotel Nights default/override ===
   let hotelNightsDirty = false;
   const tripDaysEl = document.getElementById('tripDays');
   const hotelNightsEl = document.getElementById('hotelNights');
-  hotelNightsEl.addEventListener('input', () => { hotelNightsDirty = true; recalc(); });
-  tripDaysEl.addEventListener('input', recalc);
+  hotelNightsEl.addEventListener('input', () => { hotelNightsDirty = true; debouncedRecalc(); });
+  tripDaysEl.addEventListener('input', debouncedRecalc);
 
   // === Recalc ===
   function recalc(){
     // legs
     let totalMins=0, totalLb=0, legCount=legsBody.children.length, invalid=false;
-    $$('.leg-time').forEach(inp => {
-      const mins = parseHHMMtoMinutes(inp.value);
-      if (mins === null) invalid = true; else totalMins += mins;
-    });
-    $$('.leg-fuel').forEach(inp => {
-      const lb = inp.value === '' ? 0 : Number(inp.value);
-      if (!Number.isFinite(lb) || lb < 0) invalid = true; else totalLb += lb;
-    });
+    $$('.leg-time').forEach(inp => { const mins = parseHHMMtoMinutes(inp.value); if (mins===null) invalid=true; else totalMins+=mins; });
+    $$('.leg-fuel').forEach(inp => { const lb = inp.value === '' ? 0 : Number(inp.value); if (!Number.isFinite(lb) || lb<0) invalid=true; else totalLb+=lb; });
 
     const density = num('jetADensity') || 6.7;
     const totalHours = totalMins / 60;
@@ -396,11 +520,8 @@
     const crewCount = getCrewCountFromRates();
     const tripDays = num('tripDays');
     const hotelRate = num('hotelRate');
-    // compute default nights unless manually overridden
     let hotelNights = hotelNightsDirty ? num('hotelNights') : Math.max(0, tripDays - 1);
-    if (!hotelNightsDirty && String(hotelNightsEl.value) !== String(hotelNights)) {
-      hotelNightsEl.value = hotelNights;
-    }
+    if (!hotelNightsDirty && String(hotelNightsEl.value) !== String(hotelNights)) { hotelNightsEl.value = hotelNights; }
     const mealsPerDay = num('mealsPerDay');
     const otherPerDay = num('otherPerDay');
     const rentalCarTotal = num('rentalCarTotal');
@@ -410,16 +531,11 @@
     const perPersonDaily = mealsPerDay + otherPerDay;
     const dailyLivingCost = crewCount * tripDays * perPersonDaily;
     const hotelCost = crewCount * hotelRate * hotelNights;
-
     const crewLiving = dailyLivingCost + hotelCost + rentalCarTotal + mileageTotal + airfareTotal;
 
-    // Crew service (sum each row's rate * days)
+    // Crew service
     let crewService = 0;
-    $$('#crewRatesBody tr').forEach(tr => {
-      const rate = Number(tr.querySelector('.crew-rate')?.value || 0);
-      if (Number.isFinite(rate) && tripDays > 0) crewService += rate * tripDays;
-    });
-
+    $$('#crewRatesBody tr').forEach(tr => { const rate = Number(tr.querySelector('.crew-rate')?.value || 0); if (Number.isFinite(rate) && tripDays>0) crewService += rate * tripDays; });
     const crewSubtotal = crewService + crewLiving;
 
     // Airport & Ground
@@ -428,7 +544,7 @@
       num('paxGroundTransportTotal') + num('facilityFeesTotal') + num('specialEventFeesTotal') +
       num('rampParkingTotal') + num('customsTotal') + num('hangarTotal') + num('otherAirportTotal');
 
-    // Misc (Trip Coordination Fee + Other)
+    // Misc
     const miscSubtotal = num('tripCoordFee') + num('miscOther');
 
     // Totals
@@ -446,6 +562,9 @@
     $('#outCostPerHour').textContent = totalHours > 0 ? money(grand / totalHours) : '$0.00';
     $('#outCostPerLeg').textContent = legCount > 0 ? money(grand / legCount) : '$0.00';
 
+    // Mini sticky total
+    $('#outGrandTotalMini').textContent = money(grand);
+
     // Warnings
     const warn = $('#warn');
     const soft = [];
@@ -456,6 +575,9 @@
     warn.style.display = soft.length ? 'block' : 'none';
     warn.textContent = soft.join(' ');
   }
+
+  // Now that recalc exists, install the real debounced impl
+  debouncedRecalcImpl = debounce(recalc, 120);
 
   // Summary copy (includes Trip Notes)
   function buildSummary(){
@@ -479,24 +601,7 @@
 
     const notes = ($('#tripNotes').value || '').trim();
 
-    return `Trip Cost Estimate
-
-Legs:
-${legs}
-
-Totals:
-- Time: ${totalTime} (${totalHours} h)
-- ${fuelLine}
-- Hourly Programs/Reserves: ${$('#outHourlySubtotal').textContent}
-- Crew Service: ${$('#outCrewService').textContent}
-- Crew Expenses: ${$('#outCrewLiving').textContent}
-- Airport & Ground: ${$('#outAirportSubtotal').textContent}
-- Misc: ${$('#outMiscSubtotal').textContent}
-
-Estimated Total: ${$('#outGrandTotal').textContent}${notes ? `
-
-Trip Notes:
-${notes}` : ''}`;
+    return `Trip Cost Estimate\n\nLegs:\n${legs}\n\nTotals:\n- Time: ${totalTime} (${totalHours} h)\n- ${fuelLine}\n- Hourly Programs/Reserves: ${$('#outHourlySubtotal').textContent}\n- Crew Service: ${$('#outCrewService').textContent}\n- Crew Expenses: ${$('#outCrewLiving').textContent}\n- Airport & Ground: ${$('#outAirportSubtotal').textContent}\n- Misc: ${$('#outMiscSubtotal').textContent}\n\nEstimated Total: ${$('#outGrandTotal').textContent}${notes ? `\n\nTrip Notes:\n${notes}` : ''}`;
   }
 
   function copySummary(){
@@ -537,6 +642,8 @@ ${notes}` : ''}`;
     hotelNightsDirty = false;
     hotelNightsEl.value = '0';
 
+    renderLegCards();
+    renderCrewRateCards();
     recalc();
   }
 
@@ -544,6 +651,8 @@ ${notes}` : ''}`;
   $('#calcBtn').addEventListener('click', recalc);
   $('#copyBtn').addEventListener('click', copySummary);
   $('#resetAllBtn').addEventListener('click', resetAll);
+  $('#calcBtnMini').addEventListener('click', recalc);
+  $('#copyBtnMini').addEventListener('click', copySummary);
 
   [
     'jetADensity','fuelPrice','apuFuelPerLeg',
@@ -551,10 +660,12 @@ ${notes}` : ''}`;
     'tripDays','hotelRate','hotelNights','mealsPerDay','otherPerDay','rentalCarTotal','mileageTotal','airfareTotal',
     'landingFeeTotal','cateringTotal','handlingTotal','paxGroundTransportTotal','facilityFeesTotal','specialEventFeesTotal','rampParkingTotal',
     'customsTotal','hangarTotal','otherAirportTotal','tripCoordFee','miscOther','tripNotes'
-  ].forEach(id => document.getElementById(id).addEventListener('input', recalc));
+  ].forEach(id => document.getElementById(id).addEventListener('input', debouncedRecalc));
 
   // Seed: start with NO legs. Default crew = 2 pilots.
   seedDefaultCrewRates();
+  renderCrewRateCards();
+  renderLegCards();
   recalc();
 })();
 </script>
