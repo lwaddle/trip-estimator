@@ -8,30 +8,89 @@
   let debouncedRecalcImpl = () => {};
   function debouncedRecalc(){ return debouncedRecalcImpl.apply(this, arguments); }
 
-  // Select-all on focus so typing replaces existing values (e.g., "0" -> "200" without backspacing)
-document.addEventListener('focusin', (e) => {
-  const el = e.target;
-  if (!el.matches('input[type="number"], input[type="text"], textarea')) return;
-  if (el.readOnly || el.disabled) return;
+  // Auto-format leg time: typing "115" -> "1:15", "0130" -> "01:30"
+  document.addEventListener('input', (e) => {
+    const el = e.target;
+    if (!el.classList.contains('leg-time')) return;
 
-  // If you only want this when the field is zero-ish, uncomment the next 2 lines:
-  // const zeroish = /^\s*0(?:\.0+)?\s*$/.test(String(el.value));
-  // if (!zeroish) return;
+    // Keep only digits while typing
+    let digits = String(el.value).replace(/\D+/g, '');
+    if (digits.length > 4) digits = digits.slice(0, 4);
 
-  // Allow focus to land, then select the whole value
-  setTimeout(() => {
-    try { el.select(); } catch (_) {}
-    if (el.setSelectionRange) el.setSelectionRange(0, String(el.value).length); // iOS-friendly
-  }, 0);
-}, true);
+    if (digits.length >= 3) {
+      const h = digits.slice(0, digits.length - 2);
+      const m = digits.slice(-2);
+      el.value = `${h}:${m}`;
+    } else {
+      // For 0–2 digits, just show raw digits (lets user finish typing)
+      el.value = digits;
+    }
+  });
 
-// Prevent mouseup from immediately clearing the selection (Chrome quirk)
-document.addEventListener('mouseup', (e) => {
-  if (e.target.matches('input[type="number"], input[type="text"], textarea')) {
-    e.preventDefault();
-  }
-}, true);
-  
+  // Select-all on focus for text-like inputs only (avoids errors on type=number)
+  document.addEventListener('focusin', (e) => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+    if (el.readOnly || el.disabled) return;
+
+    // Only run on text-like types (number inputs don't support selection APIs)
+    const type = (el.type || '').toLowerCase();
+    const isTextLike = el instanceof HTMLTextAreaElement ||
+      ['text', 'search', 'tel', 'url', 'email', 'password'].includes(type);
+
+    if (!isTextLike) return;
+
+    setTimeout(() => {
+      try {
+        el.select();
+        if (typeof el.setSelectionRange === 'function') {
+          el.setSelectionRange(0, String(el.value).length);
+        }
+      } catch (_) {/* ignore */}
+    }, 0);
+  }, true);
+
+  // Prevent mouseup from clearing selection (Chrome quirk)
+  document.addEventListener('mouseup', (e) => {
+    const el = e.target;
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+      const type = (el.type || '').toLowerCase();
+      const isTextLike = el instanceof HTMLTextAreaElement ||
+        ['text', 'search', 'tel', 'url', 'email', 'password'].includes(type);
+      if (isTextLike) e.preventDefault();
+    }
+  }, true);
+
+  // STRICT VALIDATION on blur: require HH:MM and minutes 00–59
+  document.addEventListener('blur', (e) => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement)) return;
+    if (!el.classList.contains('leg-time')) return;
+
+    const v = String(el.value).trim();
+    const m = v.match(/^(\d{1,3}):(\d{2})$/);
+    let msg = '';
+
+    if (!m) {
+      msg = 'Use HH:MM (e.g., 1:15, 02:30).';
+    } else {
+      const mm = Number(m[2]);
+      if (mm >= 60) msg = 'Minutes must be 00–59.';
+    }
+
+    if (msg) {
+      if (typeof el.setCustomValidity === 'function') {
+        el.setCustomValidity(msg);
+        el.reportValidity();
+      }
+      el.classList.add('invalid');
+      setTimeout(() => el.focus(), 0);
+    } else {
+      if (typeof el.setCustomValidity === 'function') el.setCustomValidity('');
+      el.classList.remove('invalid');
+    }
+  }, true);
+
   // ====== Flight legs ======
   const legsBody = $('#legsBody');
   const legsCards = $('#legsCards');
@@ -45,7 +104,10 @@ document.addEventListener('mouseup', (e) => {
       <td class="muted">Leg ${idx}</td>
       <td><input class="leg-from" type="text" inputmode="text" maxlength="8" value="${fromVal}" placeholder="PDX"></td>
       <td><input class="leg-to" type="text" inputmode="text" maxlength="8" value="${toVal}" placeholder="SFO"></td>
-      <td><input class="leg-time" type="text" inputmode="numeric" placeholder="e.g., 1:15" value="${timeVal}"></td>
+      <td><input class="leg-time" type="text" inputmode="numeric"
+                 pattern="^\\d{1,3}:[0-5]\\d$"
+                 title="Use HH:MM (e.g., 1:15, 02:30)"
+                 placeholder="e.g., 1:15" value="${timeVal}"></td>
       <td><input class="leg-fuel" type="number" inputmode="numeric" min="0" step="1" value="${fuelLbVal}"></td>
       <td class="right"><button class="danger btn-del" aria-label="Remove leg">Remove</button></td>`;
     legsBody.appendChild(tr);
@@ -84,7 +146,10 @@ document.addEventListener('mouseup', (e) => {
           <div><label>To</label><input type="text" value="${to.value}" aria-label="To" /></div>
         </div>
         <div class="row">
-          <div><label>Time (HH:MM)</label><input type="text" inputmode="numeric" value="${time.value}" aria-label="Time" /></div>
+          <div><label>Time (HH:MM)</label><input class="leg-time" type="text" inputmode="numeric"
+                 pattern="^\\d{1,3}:[0-5]\\d$"
+                 title="Use HH:MM (e.g., 1:15, 02:30)"
+                 value="${time.value}" aria-label="Time" /></div>
           <div><label>Fuel (lb)</label><input type="number" inputmode="numeric" value="${fuel.value}" aria-label="Fuel" /></div>
         </div>`;
 
