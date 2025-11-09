@@ -8,29 +8,91 @@
   let debouncedRecalcImpl = () => {};
   function debouncedRecalc(){ return debouncedRecalcImpl.apply(this, arguments); }
 
-  // Select-all on focus so typing replaces existing values (e.g., "0" -> "200" without backspacing)
+// Auto-format leg time: typing "115" -> "1:15", "0130" -> "01:30"
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if (!el.classList.contains('leg-time')) return;
+
+  // Keep only digits while typing
+  let digits = String(el.value).replace(/\D+/g, '');
+  if (digits.length > 4) digits = digits.slice(0, 4);
+
+  if (digits.length >= 3) {
+    const h = digits.slice(0, digits.length - 2);
+    const m = digits.slice(-2);
+    el.value = `${h}:${m}`;
+  } else {
+    // For 0–2 digits, just show raw digits (lets user finish typing)
+    el.value = digits;
+  }
+});
+
+//   // Select-all on focus so typing replaces existing values (e.g., "0" -> "200" without backspacing)
+// document.addEventListener('focusin', (e) => {
+//   const el = e.target;
+//   if (!el.matches('input[type="number"], input[type="text"], textarea')) return;
+//   if (el.readOnly || el.disabled) return;
+
+//   // If you only want this when the field is zero-ish, uncomment the next 2 lines:
+//   // const zeroish = /^\s*0(?:\.0+)?\s*$/.test(String(el.value));
+//   // if (!zeroish) return;
+
+//   // Allow focus to land, then select the whole value
+//   setTimeout(() => {
+//     try { el.select(); } catch (_) {}
+//     if (el.setSelectionRange) el.setSelectionRange(0, String(el.value).length); // iOS-friendly
+//   }, 0);
+// }, true);
+
+// // Prevent mouseup from immediately clearing the selection (Chrome quirk)
+// document.addEventListener('mouseup', (e) => {
+//   if (e.target.matches('input[type="number"], input[type="text"], textarea')) {
+//     e.preventDefault();
+//   }
+// }, true);
+
+
+// Select-all on focus for text-like inputs only (avoids errors on type=number)
 document.addEventListener('focusin', (e) => {
   const el = e.target;
-  if (!el.matches('input[type="number"], input[type="text"], textarea')) return;
+  if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
   if (el.readOnly || el.disabled) return;
 
-  // If you only want this when the field is zero-ish, uncomment the next 2 lines:
+  // Only run on text-like types (number inputs don't support selection APIs)
+  const type = (el.type || '').toLowerCase();
+  const isTextLike = el instanceof HTMLTextAreaElement ||
+    ['text', 'search', 'tel', 'url', 'email', 'password'].includes(type);
+
+  if (!isTextLike) return;
+
+  // If you only want this when the value looks like zero, uncomment:
   // const zeroish = /^\s*0(?:\.0+)?\s*$/.test(String(el.value));
   // if (!zeroish) return;
 
-  // Allow focus to land, then select the whole value
   setTimeout(() => {
-    try { el.select(); } catch (_) {}
-    if (el.setSelectionRange) el.setSelectionRange(0, String(el.value).length); // iOS-friendly
+    try {
+      el.select();
+      if (typeof el.setSelectionRange === 'function') {
+        el.setSelectionRange(0, String(el.value).length);
+      }
+    } catch (_) {
+      /* ignore – some virtual keyboards can still object */
+    }
   }, 0);
 }, true);
 
-// Prevent mouseup from immediately clearing the selection (Chrome quirk)
+// Prevent mouseup from clearing the selection right after focus (Chrome quirk)
 document.addEventListener('mouseup', (e) => {
-  if (e.target.matches('input[type="number"], input[type="text"], textarea')) {
-    e.preventDefault();
+  const el = e.target;
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+    // Only if it's a text-like input
+    const type = (el.type || '').toLowerCase();
+    const isTextLike = el instanceof HTMLTextAreaElement ||
+      ['text', 'search', 'tel', 'url', 'email', 'password'].includes(type);
+    if (isTextLike) e.preventDefault();
   }
 }, true);
+
   
   // ====== Flight legs ======
   const legsBody = $('#legsBody');
@@ -84,7 +146,7 @@ document.addEventListener('mouseup', (e) => {
           <div><label>To</label><input type="text" value="${to.value}" aria-label="To" /></div>
         </div>
         <div class="row">
-          <div><label>Time (HH:MM)</label><input type="text" inputmode="numeric" value="${time.value}" aria-label="Time" /></div>
+          <div><label>Time (HH:MM)</label><input class="leg-time" type="text" inputmode="numeric" value="${time.value}" aria-label="Time" /></div>
           <div><label>Fuel (lb)</label><input type="number" inputmode="numeric" value="${fuel.value}" aria-label="Fuel" /></div>
         </div>`;
 
