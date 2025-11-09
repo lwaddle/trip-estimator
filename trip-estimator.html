@@ -56,15 +56,15 @@
 
     <!-- 1) FLIGHT DATA -->
     <section class="panel" id="flightDataPanel">
-      <div class="subhead">Flight Data — Legs (ForeFlight planned time & fuel)</div>
+      <div class="subhead">Flight Data</div>
       <table aria-label="Leg entries">
         <thead>
           <tr>
             <th>#</th>
-            <th>Time (HH:MM)</th>
-            <th>Fuel (lb)</th>
             <th>From</th>
             <th>To</th>
+            <th>Time (HH:MM)</th>
+            <th>Fuel (lb)</th>
             <th class="right">Actions</th>
           </tr>
         </thead>
@@ -96,10 +96,6 @@
             <label for="apuFuelPerLeg">APU Fuel Burn (lb/leg)</label>
             <input type="number" id="apuFuelPerLeg" value="100" min="0" step="1" />
           </div>
-          <div>
-            <label>&nbsp;</label>
-            <div class="muted">Fuel totals include APU burn per leg.</div>
-          </div>
         </div>
       </details>
       <div id="flightWarn" class="warn" style="display:none"></div>
@@ -118,7 +114,7 @@
         </thead>
         <tbody id="crewRatesBody"></tbody>
       </table>
-      <div class="btnbar" style="margin-top:10px)">
+      <div class="btnbar" style="margin-top:10px">
         <button class="secondary" id="addCrewRateBtn">+ Add Role</button>
         <button class="ghost" id="clearCrewRatesBtn">Reset Roles</button>
       </div>
@@ -138,9 +134,17 @@
           <label for="rentalCarTotal">Rental Car (total for trip)</label>
           <input type="number" id="rentalCarTotal" value="0" min="0" step="0.01" />
         </div>
+        <div>
+          <label for="mileageTotal">Mileage (total for trip)</label>
+          <input type="number" id="mileageTotal" value="0" min="0" step="0.01" />
+        </div>
       </div>
 
       <div class="row-3" style="margin-top:8px">
+        <div>
+          <label for="airfareTotal">Airfare (total for trip)</label>
+          <input type="number" id="airfareTotal" value="0" min="0" step="0.01" />
+        </div>
         <div>
           <label for="hotelNights">Hotel Nights</label>
           <input type="number" id="hotelNights" value="0" min="0" step="1" />
@@ -194,8 +198,12 @@
         <div><label for="paxGroundTransportTotal">Passenger Ground Transport</label><input type="number" id="paxGroundTransportTotal" value="0" min="0" step="0.01" /></div>
       </div>
       <div class="row-4" style="margin-top:8px">
+        <div><label for="facilityFeesTotal">Facility Fees</label><input type="number" id="facilityFeesTotal" value="0" min="0" step="0.01" /></div>
+        <div><label for="specialEventFeesTotal">Special Event Fees</label><input type="number" id="specialEventFeesTotal" value="0" min="0" step="0.01" /></div>
         <div><label for="rampParkingTotal">Ramp/Parking</label><input type="number" id="rampParkingTotal" value="0" min="0" step="0.01" /></div>
         <div><label for="customsTotal">Customs</label><input type="number" id="customsTotal" value="0" min="0" step="0.01" /></div>
+      </div>
+      <div class="row-4" style="margin-top:8px">
         <div><label for="hangarTotal">Hangar</label><input type="number" id="hangarTotal" value="0" min="0" step="0.01" /></div>
         <div><label for="otherAirportTotal">Other</label><input type="number" id="otherAirportTotal" value="0" min="0" step="0.01" /></div>
       </div>
@@ -268,10 +276,10 @@
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="muted">Leg ${idx}</td>
-      <td><input class="leg-time" type="text" placeholder="e.g., 1:15" value="${timeVal}"></td>
-      <td><input class="leg-fuel" type="number" min="0" step="1" value="${fuelLbVal}"></td>
       <td><input class="leg-from" type="text" value="${fromVal}" placeholder="PDX"></td>
       <td><input class="leg-to" type="text" value="${toVal}" placeholder="SFO"></td>
+      <td><input class="leg-time" type="text" placeholder="e.g., 1:15" value="${timeVal}"></td>
+      <td><input class="leg-fuel" type="number" min="0" step="1" value="${fuelLbVal}"></td>
       <td class="right"><button class="danger btn-del">Remove</button></td>`;
     legsBody.appendChild(tr);
     tr.querySelector('.btn-del').addEventListener('click', () => {
@@ -285,6 +293,8 @@
       if (mins != null) e.target.value = minutesToHHMM(mins);
     });
     tr.querySelector('.leg-fuel').addEventListener('input', recalc);
+    tr.querySelector('.leg-from').addEventListener('input', recalc);
+    tr.querySelector('.leg-to').addEventListener('input', recalc);
   }
 
   // === Crew Day Rates ===
@@ -394,12 +404,14 @@
     const mealsPerDay = num('mealsPerDay');
     const otherPerDay = num('otherPerDay');
     const rentalCarTotal = num('rentalCarTotal');
+    const mileageTotal = num('mileageTotal');
+    const airfareTotal = num('airfareTotal');
 
     const perPersonDaily = mealsPerDay + otherPerDay;
     const dailyLivingCost = crewCount * tripDays * perPersonDaily;
     const hotelCost = crewCount * hotelRate * hotelNights;
 
-    const crewLiving = dailyLivingCost + hotelCost + rentalCarTotal;
+    const crewLiving = dailyLivingCost + hotelCost + rentalCarTotal + mileageTotal + airfareTotal;
 
     // Crew service (sum each row's rate * days)
     let crewService = 0;
@@ -413,10 +425,10 @@
     // Airport & Ground
     const airportSubtotal =
       num('landingFeeTotal') + num('cateringTotal') + num('handlingTotal') +
-      num('paxGroundTransportTotal') + num('rampParkingTotal') + num('customsTotal') +
-      num('hangarTotal') + num('otherAirportTotal');
+      num('paxGroundTransportTotal') + num('facilityFeesTotal') + num('specialEventFeesTotal') +
+      num('rampParkingTotal') + num('customsTotal') + num('hangarTotal') + num('otherAirportTotal');
 
-    // Misc (only Trip Coordination Fee + Other)
+    // Misc (Trip Coordination Fee + Other)
     const miscSubtotal = num('tripCoordFee') + num('miscOther');
 
     // Totals
@@ -481,8 +493,7 @@ Totals:
 - Airport & Ground: ${$('#outAirportSubtotal').textContent}
 - Misc: ${$('#outMiscSubtotal').textContent}
 
-Estimated Total: ${$('#outGrandTotal').textContent}
-Notes: Fuel totals include APU burn per leg.${notes ? `
+Estimated Total: ${$('#outGrandTotal').textContent}${notes ? `
 
 Trip Notes:
 ${notes}` : ''}`;
@@ -511,8 +522,8 @@ ${notes}` : ''}`;
     const keepDefaults = new Set(['fuelPrice','ratePrograms','apuFuelPerLeg']);
     [
       'jetADensity','addlHourly','engineReserveHourly',
-      'tripDays','hotelRate','hotelNights','mealsPerDay','otherPerDay','rentalCarTotal',
-      'landingFeeTotal','cateringTotal','handlingTotal','paxGroundTransportTotal','rampParkingTotal',
+      'tripDays','hotelRate','hotelNights','mealsPerDay','otherPerDay','rentalCarTotal','mileageTotal','airfareTotal',
+      'landingFeeTotal','cateringTotal','handlingTotal','paxGroundTransportTotal','facilityFeesTotal','specialEventFeesTotal','rampParkingTotal',
       'customsTotal','hangarTotal','otherAirportTotal','tripCoordFee','miscOther'
     ].forEach(id => {
       const el = document.getElementById(id);
@@ -537,8 +548,8 @@ ${notes}` : ''}`;
   [
     'jetADensity','fuelPrice','apuFuelPerLeg',
     'ratePrograms','addlHourly','engineReserveHourly',
-    'tripDays','hotelRate','hotelNights','mealsPerDay','otherPerDay','rentalCarTotal',
-    'landingFeeTotal','cateringTotal','handlingTotal','paxGroundTransportTotal','rampParkingTotal',
+    'tripDays','hotelRate','hotelNights','mealsPerDay','otherPerDay','rentalCarTotal','mileageTotal','airfareTotal',
+    'landingFeeTotal','cateringTotal','handlingTotal','paxGroundTransportTotal','facilityFeesTotal','specialEventFeesTotal','rampParkingTotal',
     'customsTotal','hangarTotal','otherAirportTotal','tripCoordFee','miscOther','tripNotes'
   ].forEach(id => document.getElementById(id).addEventListener('input', recalc));
 
