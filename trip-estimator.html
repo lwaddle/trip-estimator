@@ -358,45 +358,43 @@
     [...legsBody.children].forEach((r,i)=>r.children[0].textContent=`Leg ${i+1}`);
   }
 
+  // Update the card creation code to include explicit input types
   function renderLegCards(){
     legsCards.innerHTML='';
-    const rows = [...legsBody.children];
+    const rows=[...legsBody.children];
     rows.forEach((tr,i)=>{
       const from = tr.querySelector('.leg-from');
       const to = tr.querySelector('.leg-to');
       const time = tr.querySelector('.leg-time');
       const fuel = tr.querySelector('.leg-fuel');
       const card = document.createElement('div');
-      card.className='card';
+      card.className='card card-leg';
       card.innerHTML = `
         <div class="card-header">
           <span class="badge">Leg ${i+1}</span>
           <button class="danger" aria-label="Remove leg ${i+1}">Remove</button>
         </div>
         <div class="row" style="margin-bottom:8px">
-          <div><label>From</label><input value="${from.value}" aria-label="From" /></div>
-          <div><label>To</label><input value="${to.value}" aria-label="To" /></div>
+          <div><label>From</label><input type="text" value="${from.value}" aria-label="From" /></div>
+          <div><label>To</label><input type="text" value="${to.value}" aria-label="To" /></div>
         </div>
         <div class="row">
-          <div><label>Time (HH:MM)</label><input value="${time.value}" inputmode="numeric" aria-label="Time" /></div>
-          <div><label>Fuel (lb)</label><input value="${fuel.value}" inputmode="numeric" aria-label="Fuel" /></div>
+          <div><label>Time (HH:MM)</label><input type="text" inputmode="numeric" value="${time.value}" aria-label="Time" /></div>
+          <div><label>Fuel (lb)</label><input type="number" inputmode="numeric" value="${fuel.value}" aria-label="Fuel" /></div>
         </div>`;
 
       const [cFrom,cTo,cTime,cFuel] = card.querySelectorAll('input');
       const removeBtn = card.querySelector('button');
 
-      // Sync card -> table inputs
       cFrom.addEventListener('input', e => { from.value = e.target.value; debouncedRecalc(); });
       cTo.addEventListener('input', e => { to.value = e.target.value; debouncedRecalc(); });
       cTime.addEventListener('input', e => { time.value = e.target.value; debouncedRecalc(); });
-      cTime.addEventListener('blur', e => { const mins = parseHHMMtoMinutes(e.target.value); if (mins != null){ e.target.value = minutesToHHMM(mins); time.value = e.target.value; }});
+      cTime.addEventListener('blur', e => { const mins=parseHHMMtoMinutes(e.target.value); if(mins!=null){ e.target.value=minutesToHHMM(mins); time.value=e.target.value; }});
       cFuel.addEventListener('input', e => { fuel.value = e.target.value; debouncedRecalc(); });
       removeBtn.addEventListener('click', ()=>{ tr.remove(); renumberLegs(); renderLegCards(); recalc(); });
 
       legsCards.appendChild(card);
     });
-
-    // Show sticky add bar on mobile only if cards exist
     $('#addLegSticky').setAttribute('aria-hidden', rows.length ? 'false' : 'true');
   }
 
