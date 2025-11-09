@@ -1,0 +1,64 @@
+# Node / Build Tools
+node_modules/
+dist/
+build/
+.cache/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS-specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+
+# Editor / IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Env and config
+.env
+.env.local
+.env.development
+.env.production
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+*.orig
+
+# Coverage and test
+coverage/
+.nyc_output/
+jest-html-reporters-*.html
+
+# Deployment
+.vercel/
+.netlify/
+cloudflare/
+functions/
+workers/
+
+# Output / generated
+*.min.js
+*.map
+
+# Local server files
+server.pid
+*.pem
+*.key
+*.crt
+
+# System backup files
+*.old
+*~
+
+# Optional: ignore compiled docs or exports
+export/
+docs/
