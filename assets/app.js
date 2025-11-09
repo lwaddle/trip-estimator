@@ -8,6 +8,30 @@
   let debouncedRecalcImpl = () => {};
   function debouncedRecalc(){ return debouncedRecalcImpl.apply(this, arguments); }
 
+  // Select-all on focus so typing replaces existing values (e.g., "0" -> "200" without backspacing)
+document.addEventListener('focusin', (e) => {
+  const el = e.target;
+  if (!el.matches('input[type="number"], input[type="text"], textarea')) return;
+  if (el.readOnly || el.disabled) return;
+
+  // If you only want this when the field is zero-ish, uncomment the next 2 lines:
+  // const zeroish = /^\s*0(?:\.0+)?\s*$/.test(String(el.value));
+  // if (!zeroish) return;
+
+  // Allow focus to land, then select the whole value
+  setTimeout(() => {
+    try { el.select(); } catch (_) {}
+    if (el.setSelectionRange) el.setSelectionRange(0, String(el.value).length); // iOS-friendly
+  }, 0);
+}, true);
+
+// Prevent mouseup from immediately clearing the selection (Chrome quirk)
+document.addEventListener('mouseup', (e) => {
+  if (e.target.matches('input[type="number"], input[type="text"], textarea')) {
+    e.preventDefault();
+  }
+}, true);
+  
   // ====== Flight legs ======
   const legsBody = $('#legsBody');
   const legsCards = $('#legsCards');
