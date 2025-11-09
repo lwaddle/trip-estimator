@@ -13,7 +13,6 @@
   const legsCards = $('#legsCards');
   $('#addLegBtn').addEventListener('click', () => addLegRow());
   $('#clearLegsBtn').addEventListener('click', () => { legsBody.innerHTML=''; renderLegCards(); recalc(); });
-  $('#addLegBtnSticky').addEventListener('click', () => addLegRow());
 
   function addLegRow(timeVal='', fuelLbVal='0', fromVal='', toVal=''){
     const idx = legsBody.children.length + 1;
@@ -77,8 +76,6 @@
 
       legsCards.appendChild(card);
     });
-
-    $('#addLegSticky').setAttribute('aria-hidden', rows.length ? 'false' : 'true');
   }
 
   // ====== Crew rates ======
