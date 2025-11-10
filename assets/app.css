@@ -71,3 +71,14 @@ input.leg-time.invalid { border-color:#ff6b6b; box-shadow:0 0 0 2px rgba(255,107
   #crewRatesCards{display:block}
   .row,.row-3,.row-4{grid-template-columns:1fr}
 }
+
+/* Prevent iOS focus-zoom by keeping inputs >=16px */
+input, select, textarea { font-size: 16px; }
+
+/* Belt & suspenders: only-on-iOS tweak to avoid surprises */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea { font-size: 16px; }
+}
+
+/* Optional: ensure iOS doesn’t auto-resize text */
+html { -webkit-text-size-adjust: 100%; }

@@ -1,52 +1,31 @@
 (function(){
+  // ===== Helpers =====
   const $ = s => document.querySelector(s);
   const $$ = s => Array.from(document.querySelectorAll(s));
   const money = n => new Intl.NumberFormat(undefined, { style:'currency', currency:'USD', maximumFractionDigits: 2 }).format(n || 0);
 
-  // Debounce + forwarder to avoid TDZ on early listeners
-  function debounce(fn, wait=120){ let t; return function(...args){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,args), wait); }; }
+  // Debounce wrapper (keeps a stable reference to call before it's defined)
+  function debounce(fn, wait=120){ let t; return function(...a){ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), wait); }; }
   let debouncedRecalcImpl = () => {};
   function debouncedRecalc(){ return debouncedRecalcImpl.apply(this, arguments); }
 
-  // Auto-format leg time: typing "115" -> "1:15", "0130" -> "01:30"
-  document.addEventListener('input', (e) => {
-    const el = e.target;
-    if (!el.classList.contains('leg-time')) return;
+  // ===== Input UX tweaks =====
 
-    // Keep only digits while typing
-    let digits = String(el.value).replace(/\D+/g, '');
-    if (digits.length > 4) digits = digits.slice(0, 4);
-
-    if (digits.length >= 3) {
-      const h = digits.slice(0, digits.length - 2);
-      const m = digits.slice(-2);
-      el.value = `${h}:${m}`;
-    } else {
-      // For 0–2 digits, just show raw digits (lets user finish typing)
-      el.value = digits;
-    }
-  });
-
-  // Select-all on focus for text-like inputs only (avoids errors on type=number)
+  // Select-all on focus for text-like inputs (skip number)
   document.addEventListener('focusin', (e) => {
     const el = e.target;
     if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
     if (el.readOnly || el.disabled) return;
-
-    // Only run on text-like types (number inputs don't support selection APIs)
     const type = (el.type || '').toLowerCase();
     const isTextLike = el instanceof HTMLTextAreaElement ||
-      ['text', 'search', 'tel', 'url', 'email', 'password'].includes(type);
-
+      ['text','search','tel','url','email','password'].includes(type);
     if (!isTextLike) return;
-
     setTimeout(() => {
       try {
         el.select();
-        if (typeof el.setSelectionRange === 'function') {
+        if (typeof el.setSelectionRange === 'function')
           el.setSelectionRange(0, String(el.value).length);
-        }
-      } catch (_) {/* ignore */}
+      } catch {}
     }, 0);
   }, true);
 
@@ -56,42 +35,49 @@
     if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
       const type = (el.type || '').toLowerCase();
       const isTextLike = el instanceof HTMLTextAreaElement ||
-        ['text', 'search', 'tel', 'url', 'email', 'password'].includes(type);
+        ['text','search','tel','url','email','password'].includes(type);
       if (isTextLike) e.preventDefault();
     }
   }, true);
 
-  // STRICT VALIDATION on blur: require HH:MM and minutes 00–59
-  document.addEventListener('blur', (e) => {
+  // Auto-format leg-time input: "115" -> "1:15"
+  document.addEventListener('input', (e)=>{
     const el = e.target;
-    if (!(el instanceof HTMLInputElement)) return;
-    if (!el.classList.contains('leg-time')) return;
+    if(!el.classList.contains('leg-time')) return;
+    let digits = String(el.value).replace(/\D+/g,'').slice(0,4);
+    if(digits.length>=3){
+      const h = digits.slice(0,digits.length-2);
+      const m = digits.slice(-2);
+      el.value = `${h}:${m}`;
+    }else{
+      el.value = digits;
+    }
+  });
 
+  // Strict time validation (Option B)
+  document.addEventListener('blur',(e)=>{
+    const el = e.target;
+    if(!el.classList.contains('leg-time')) return;
     const v = String(el.value).trim();
     const m = v.match(/^(\d{1,3}):(\d{2})$/);
-    let msg = '';
-
-    if (!m) {
-      msg = 'Use HH:MM (e.g., 1:15, 02:30).';
-    } else {
-      const mm = Number(m[2]);
-      if (mm >= 60) msg = 'Minutes must be 00–59.';
+    let msg='';
+    if(!m){ msg='Use HH:MM (e.g., 1:15, 02:30).'; }
+    else{
+      const mm=Number(m[2]);
+      if(mm>=60) msg='Minutes must be 00–59.';
     }
-
-    if (msg) {
-      if (typeof el.setCustomValidity === 'function') {
-        el.setCustomValidity(msg);
-        el.reportValidity();
-      }
+    if(msg){
+      el.setCustomValidity?.(msg);
+      el.reportValidity?.();
       el.classList.add('invalid');
-      setTimeout(() => el.focus(), 0);
-    } else {
-      if (typeof el.setCustomValidity === 'function') el.setCustomValidity('');
+      setTimeout(()=>el.focus(),0);
+    }else{
+      el.setCustomValidity?.('');
       el.classList.remove('invalid');
     }
-  }, true);
+  },true);
 
-  // ====== Flight legs ======
+  // ===== Flight legs =====
   const legsBody = $('#legsBody');
   const legsCards = $('#legsCards');
   $('#addLegBtn').addEventListener('click', () => addLegRow());
@@ -105,8 +91,7 @@
       <td><input class="leg-from" type="text" inputmode="text" maxlength="8" value="${fromVal}" placeholder="PDX"></td>
       <td><input class="leg-to" type="text" inputmode="text" maxlength="8" value="${toVal}" placeholder="SFO"></td>
       <td><input class="leg-time" type="text" inputmode="numeric"
-                 pattern="^\\d{1,3}:[0-5]\\d$"
-                 title="Use HH:MM (e.g., 1:15, 02:30)"
+                 pattern="^\\d{1,3}:[0-5]\\d$" title="Use HH:MM (e.g., 1:15, 02:30)"
                  placeholder="e.g., 1:15" value="${timeVal}"></td>
       <td><input class="leg-fuel" type="number" inputmode="numeric" min="0" step="1" value="${fuelLbVal}"></td>
       <td class="right"><button class="danger btn-del" aria-label="Remove leg">Remove</button></td>`;
@@ -134,6 +119,7 @@
       const to = tr.querySelector('.leg-to');
       const time = tr.querySelector('.leg-time');
       const fuel = tr.querySelector('.leg-fuel');
+
       const card = document.createElement('div');
       card.className='card card-leg';
       card.innerHTML = `
@@ -147,8 +133,7 @@
         </div>
         <div class="row">
           <div><label>Time (HH:MM)</label><input class="leg-time" type="text" inputmode="numeric"
-                 pattern="^\\d{1,3}:[0-5]\\d$"
-                 title="Use HH:MM (e.g., 1:15, 02:30)"
+                 pattern="^\\d{1,3}:[0-5]\\d$" title="Use HH:MM (e.g., 1:15, 02:30)"
                  value="${time.value}" aria-label="Time" /></div>
           <div><label>Fuel (lb)</label><input type="number" inputmode="numeric" value="${fuel.value}" aria-label="Fuel" /></div>
         </div>`;
@@ -167,8 +152,8 @@
     });
   }
 
-  // ====== Crew rates ======
-  const crewRatesBody = $('#crewRatesBody');
+  // ===== Crew Day Rates =====
+  const crewRatesBody  = $('#crewRatesBody');
   const crewRatesCards = $('#crewRatesCards');
   $('#addCrewRateBtn').addEventListener('click', () => addCrewRateRow('Pilot', 1500));
   $('#clearCrewRatesBtn').addEventListener('click', () => { crewRatesBody.innerHTML=''; seedDefaultCrewRates(); renderCrewRateCards(); recalc(); });
@@ -201,6 +186,7 @@
     rows.forEach((tr,i)=>{
       const roleSel = tr.querySelector('.crew-role');
       const rateInp = tr.querySelector('.crew-rate');
+
       const card=document.createElement('div'); card.className='card';
       card.innerHTML=`
         <div class="card-header">
@@ -222,12 +208,15 @@
             <input type="number" inputmode="numeric" min="0" step="0.01" value="${rateInp.value}" aria-label="Daily rate" />
           </div>
         </div>`;
+
       const cardRole = card.querySelector('select');
       const cardRate = card.querySelector('input');
+
       cardRole.value = roleSel.value;
       cardRole.addEventListener('change', e=>{ roleSel.value = e.target.value; debouncedRecalc(); });
-      cardRate.addEventListener('input', e=>{ rateInp.value = e.target.value; debouncedRecalc(); });
+      cardRate.addEventListener('input',  e=>{ rateInp.value = e.target.value; debouncedRecalc(); });
       card.querySelector('button').addEventListener('click', ()=>{ tr.remove(); renderCrewRateCards(); recalc(); });
+
       crewRatesCards.appendChild(card);
     });
   }
@@ -235,77 +224,97 @@
   function seedDefaultCrewRates(){ addCrewRateRow('Pilot', 1500); addCrewRateRow('Pilot', 1500); }
   function getCrewCountFromRates(){ return $$('#crewRatesBody tr').length; }
 
-  // ====== Utilities ======
-  function parseHHMMtoMinutes(str){
-    if (!str) return 0; const s=String(str).trim();
-    if (/^\d+:\d{1,2}$/.test(s)) { const [h,m]=s.split(':').map(Number); if (m>=60) return null; return h*60+m; }
-    return null;
+  // ===== Parse helpers =====
+  function parseHHMMtoMinutes(v){
+    const m=String(v).match(/^(\d{1,3}):(\d{2})$/);
+    if(!m) return null;
+    const mm=Number(m[2]);
+    if(mm>=60) return null;
+    const h=Number(m[1]);
+    return h*60+mm;
   }
-  function minutesToHHMM(mins){ const h=Math.floor(mins/60), m=mins%60; return `${h}:${String(m).padStart(2,'0')}`; }
+  function minutesToHHMM(m){ const h=Math.floor(m/60), mm=m%60; return `${h}:${String(mm).padStart(2,'0')}`; }
   function num(id){ const el=document.getElementById(id); if(!el) return 0; const v=(el.value ?? '').toString().trim(); if(v==='') return 0; const n=Number(v); return Number.isFinite(n)?n:0; }
 
-  // ====== Hotel nights default/override ======
+  // ===== Hotel nights default/override =====
   let hotelNightsDirty = false;
   const tripDaysEl = document.getElementById('tripDays');
   const hotelNightsEl = document.getElementById('hotelNights');
   hotelNightsEl.addEventListener('input', () => { hotelNightsDirty = true; debouncedRecalc(); });
   tripDaysEl.addEventListener('input', debouncedRecalc);
 
-  // ====== Recalc ======
+  // ===== Recalc =====
   function recalc(){
-    // legs
-    let totalMins=0, totalLb=0, legCount=legsBody.children.length, invalid=false;
-    $$('.leg-time').forEach(inp => { const mins = parseHHMMtoMinutes(inp.value); if (mins===null) invalid=true; else totalMins+=mins; });
-    $$('.leg-fuel').forEach(inp => { const lb = inp.value === '' ? 0 : Number(inp.value); if (!Number.isFinite(lb) || lb<0) invalid=true; else totalLb+=lb; });
+    // Legs — source of truth is the table rows
+    const rows = Array.from(legsBody.children);
+    const legCount = rows.length;
+
+    let totalMins=0, totalLb=0, invalid=false;
+
+    rows.forEach(tr=>{
+      const tVal = (tr.querySelector('.leg-time')?.value || '').trim();
+      const fVal = (tr.querySelector('.leg-fuel')?.value || '').trim();
+
+      const mins = parseHHMMtoMinutes(tVal);
+      if (mins === null) invalid = true; else totalMins += mins;
+
+      const lb = fVal === '' ? 0 : Number(fVal);
+      if (!Number.isFinite(lb) || lb < 0) invalid = true; else totalLb += lb;
+    });
 
     const density = num('jetADensity') || 6.7;
     const totalHours = totalMins / 60;
 
-    // APU fuel
+    // APU
     const apuFuelPerLeg = num('apuFuelPerLeg');
     const apuTotalLb = apuFuelPerLeg * legCount;
     const totalLbWithApu = totalLb + apuTotalLb;
     const totalGalWithApu = density > 0 ? totalLbWithApu / density : 0;
 
-    // KPIs
+    // KPI tiles
     $('#totalTimeHHMM').textContent = minutesToHHMM(totalMins);
     $('#totalHoursDec').textContent = totalHours.toFixed(2);
     $('#totalFuelLb').textContent = Math.round(totalLbWithApu);
     $('#totalFuelGal').textContent = totalGalWithApu.toFixed(1);
 
-    // Fuel cost
+    // Costs
     const fuelPrice = num('fuelPrice');
     const fuelCost = totalGalWithApu * fuelPrice;
 
-    // Hourly buckets
-    const hourlySubtotal = (num('ratePrograms') + num('addlHourly') + num('engineReserveHourly')) * totalHours;
+    const hourlySubtotal =
+      (num('ratePrograms') + num('addlHourly') + num('engineReserveHourly')) * totalHours;
 
-    // Crew inputs
+    // Crew expenses
     const crewCount = getCrewCountFromRates();
     const tripDays = num('tripDays');
-    const hotelRate = num('hotelRate');
+
+    // Hotel nights default unless user edited
     let hotelNights = hotelNightsDirty ? num('hotelNights') : Math.max(0, tripDays - 1);
-    if (!hotelNightsDirty && String(hotelNightsEl.value) !== String(hotelNights)) { hotelNightsEl.value = hotelNights; }
+    if (!hotelNightsDirty && String(hotelNightsEl.value) !== String(hotelNights)) {
+      hotelNightsEl.value = hotelNights;
+    }
+
+    const hotelRate   = num('hotelRate');
     const mealsPerDay = num('mealsPerDay');
     const otherPerDay = num('otherPerDay');
     const rentalCarTotal = num('rentalCarTotal');
-    const mileageTotal = num('mileageTotal');
-    const airfareTotal = num('airfareTotal');
+    const mileageTotal   = num('mileageTotal');
+    const airfareTotal   = num('airfareTotal');
 
-    const perPersonDaily = mealsPerDay + otherPerDay;
+    const perPersonDaily  = mealsPerDay + otherPerDay;
     const dailyLivingCost = crewCount * tripDays * perPersonDaily;
-    const hotelCost = crewCount * hotelRate * hotelNights;
-    const crewLiving = dailyLivingCost + hotelCost + rentalCarTotal + mileageTotal + airfareTotal;
+    const hotelCost       = crewCount * hotelRate * hotelNights;
+    const crewLiving      = dailyLivingCost + hotelCost + rentalCarTotal + mileageTotal + airfareTotal;
 
-    // Crew service
+    // Crew service (day rates)
     let crewService = 0;
     $$('#crewRatesBody tr').forEach(tr => {
       const rate = Number(tr.querySelector('.crew-rate')?.value || 0);
-      if (Number.isFinite(rate) && tripDays>0) crewService += rate * tripDays;
+      if (Number.isFinite(rate) && tripDays > 0) crewService += rate * tripDays;
     });
     const crewSubtotal = crewService + crewLiving;
 
-    // Airport & Ground
+    // Airport & ground
     const airportSubtotal =
       num('landingFeeTotal') + num('cateringTotal') + num('handlingTotal') +
       num('paxGroundTransportTotal') + num('facilityFeesTotal') + num('specialEventFeesTotal') +
@@ -315,38 +324,38 @@
     const miscSubtotal = num('tripCoordFee') + num('miscOther');
 
     // Totals
-    const grand = (hourlySubtotal + fuelCost + crewSubtotal + airportSubtotal + miscSubtotal);
+    const grand = hourlySubtotal + fuelCost + crewSubtotal + airportSubtotal + miscSubtotal;
 
     // Outputs
-    $('#outHourlySubtotal').textContent = money(hourlySubtotal);
-    $('#outFuelSubtotal').textContent = money(fuelCost);
-    $('#outCrewService').textContent = money(crewService);
-    $('#outCrewLiving').textContent = money(crewLiving);
-    $('#outCrewSubtotal').textContent = money(crewSubtotal);
+    $('#outHourlySubtotal').textContent  = money(hourlySubtotal);
+    $('#outFuelSubtotal').textContent    = money(fuelCost);
+    $('#outCrewService').textContent     = money(crewService);
+    $('#outCrewLiving').textContent      = money(crewLiving);
+    $('#outCrewSubtotal').textContent    = money(crewSubtotal);
     $('#outAirportSubtotal').textContent = money(airportSubtotal);
-    $('#outMiscSubtotal').textContent = money(miscSubtotal);
-    $('#outGrandTotal').textContent = money(grand);
-    $('#outCostPerHour').textContent = totalHours > 0 ? money(grand / totalHours) : '$0.00';
-    $('#outCostPerLeg').textContent = legCount > 0 ? money(grand / legCount) : '$0.00';
+    $('#outMiscSubtotal').textContent    = money(miscSubtotal);
+    $('#outGrandTotal').textContent      = money(grand);
 
-    // Mini sticky
+    $('#outCostPerHour').textContent = totalHours > 0 ? money(grand / totalHours) : '$0.00';
+    $('#outCostPerLeg').textContent  = legCount > 0 ? money(grand / legCount) : '$0.00';
+
+    // Sticky mini total
     $('#outGrandTotalMini').textContent = money(grand);
 
     // Warnings
     const warn = $('#warn');
     const soft = [];
     if (totalHours === 0) soft.push('Total time is 0.');
-    if (totalLb === 0) soft.push('Total fuel (excl. APU) is 0 lb.');
+    if (totalLb === 0)    soft.push('Total fuel (excl. APU) is 0 lb.');
     if (fuelPrice === 0 && totalGalWithApu > 0) soft.push('Fuel price is 0.');
     if (crewCount > 0 && tripDays === 0) soft.push('Trip days is 0 while crew exists.');
     warn.style.display = soft.length ? 'block' : 'none';
     warn.textContent = soft.join(' ');
   }
 
-  // Install the real debounced impl after recalc exists
   debouncedRecalcImpl = debounce(recalc, 120);
 
-  // Summary copy (with Trip Notes)
+  // ===== Summary / actions =====
   function buildSummary(){
     const legs = $$('#legsBody tr').map((tr,i)=>{
       const t = tr.querySelector('.leg-time').value || '0:00';
@@ -382,11 +391,14 @@
   }
 
   function resetAll(){
+    // Legs
     $('#legsBody').innerHTML = '';
+
+    // Crew roles
     $('#crewRatesBody').innerHTML = '';
     seedDefaultCrewRates();
 
-    const keepDefaults = new Set(['fuelPrice','ratePrograms','apuFuelPerLeg']);
+    const keepDefaults = new Set(['fuelPrice','ratePrograms','apuFuelPerLeg']); // keep your preferred defaults
     [
       'jetADensity','addlHourly','engineReserveHourly',
       'tripDays','hotelRate','hotelNights','mealsPerDay','otherPerDay','rentalCarTotal','mileageTotal','airfareTotal',
@@ -406,7 +418,7 @@
     recalc();
   }
 
-  // Actions
+  // Buttons & inputs
   $('#calcBtn').addEventListener('click', recalc);
   $('#copyBtn').addEventListener('click', copySummary);
   $('#resetAllBtn').addEventListener('click', resetAll);
@@ -421,7 +433,7 @@
     'customsTotal','hangarTotal','otherAirportTotal','tripCoordFee','miscOther','tripNotes'
   ].forEach(id => document.getElementById(id).addEventListener('input', debouncedRecalc));
 
-  // Seed defaults: no legs; two pilots
+  // Seed defaults (no legs; two pilots)
   seedDefaultCrewRates();
   renderCrewRateCards();
   renderLegCards();
