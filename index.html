@@ -96,7 +96,10 @@
                 <h3 class="subsection-title">Trip Duration</h3>
                 <div class="expense-fields">
                     <div class="field-group">
-                        <label for="tripDays">Trip Days</label>
+                        <label for="tripDays">
+                            Trip Days
+                            <span class="info-icon" title="Trip Days = number of days crew charges their daily rate. May differ from calendar days (e.g., pilots might fly out same-day and return a week later = 2 trip days for a week-long trip).">ⓘ</span>
+                        </label>
                         <input
                             type="number"
                             id="tripDays"
@@ -105,6 +108,7 @@
                             value="0"
                             oninput="validateTripDays(this)"
                         >
+                        <div class="trip-days-helper" id="tripDaysHelper"></div>
                     </div>
                     <div class="field-group">
                         <label for="hotelStays">Hotel Stays (nights)</label>

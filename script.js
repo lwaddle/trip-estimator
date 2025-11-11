@@ -145,6 +145,9 @@ function removeLeg(legId) {
 
     // Update summary
     updateSummary();
+
+    // Update trip days helper
+    updateTripDaysHelper();
 }
 
 function renumberLegs() {
@@ -163,6 +166,7 @@ function updateLegData(legId, field, value) {
     if (leg) {
         leg[field] = value;
         updateSummary();
+        updateTripDaysHelper();
     }
 }
 
@@ -337,6 +341,7 @@ function validateApuFuelBurn(input) {
         input.value = '';
         input.classList.remove('error');
         updateSummary();
+        updateTripDaysHelper();
         return;
     }
 
@@ -353,14 +358,18 @@ function validateApuFuelBurn(input) {
 
     // Update summary since APU fuel burn affects total gallons
     updateSummary();
+    updateTripDaysHelper();
 }
 
 // Helper function to get fuel parameters
 function getFuelParameters() {
+    const apuValue = document.getElementById('apuFuelBurn').value;
+    const apuFuelBurn = apuValue === '' ? 0 : parseInt(apuValue, 10);
+
     return {
         fuelDensity: parseFloat(document.getElementById('fuelDensity').value) || 6.7,
         fuelPrice: parseFloat(document.getElementById('fuelPrice').value) || 5.93,
-        apuFuelBurn: parseInt(document.getElementById('apuFuelBurn').value, 10) || 100
+        apuFuelBurn: apuFuelBurn
     };
 }
 
@@ -395,7 +404,8 @@ function updateSummary() {
     });
 
     // Get APU Fuel Burn per leg
-    const apuFuelBurn = parseInt(document.getElementById('apuFuelBurn').value, 10) || 0;
+    const apuValue = document.getElementById('apuFuelBurn').value;
+    const apuFuelBurn = apuValue === '' ? 0 : parseInt(apuValue, 10);
     const numLegs = legs.length;
     const totalApuFuelLbs = numLegs * apuFuelBurn;
 
@@ -432,6 +442,9 @@ function addCrewRole() {
 
     // Update trip estimate since crew count affects calculations
     updateTripEstimate();
+
+    // Update trip days helper
+    updateTripDaysHelper();
 }
 
 function createCrewRow(crewData) {
@@ -497,6 +510,9 @@ function removeCrewRole(crewId) {
 
     // Update trip estimate since crew count affects calculations
     updateTripEstimate();
+
+    // Update trip days helper
+    updateTripDaysHelper();
 }
 
 function renumberCrew() {
@@ -515,6 +531,7 @@ function updateCrewData(crewId, field, value) {
     if (crew) {
         crew[field] = value;
         updateTripEstimate();
+        updateTripDaysHelper();
     }
 }
 
@@ -573,6 +590,7 @@ function validateTripDays(input) {
         input.value = '';
         input.classList.remove('error');
         updateTripEstimate();
+        updateTripDaysHelper();
         return;
     }
 
@@ -587,6 +605,49 @@ function validateTripDays(input) {
     input.value = tripDays;
     input.classList.remove('error');
     updateTripEstimate();
+    updateTripDaysHelper();
+}
+
+// Update Trip Days helper text and visual warning
+function updateTripDaysHelper() {
+    const tripDaysInput = document.getElementById('tripDays');
+    const tripDaysHelper = document.getElementById('tripDaysHelper');
+    const tripDays = parseInt(tripDaysInput.value, 10) || 0;
+
+    // Check if there are active legs with data
+    const hasActiveLegs = legs.filter(leg => {
+        const hasFuelBurn = parseInt(leg.fuelBurn, 10) > 0;
+        const hasFlightTime = (parseInt(leg.hours, 10) || 0) > 0 || (parseInt(leg.minutes, 10) || 0) > 0;
+        return hasFuelBurn || hasFlightTime;
+    }).length > 0;
+
+    // Check if there are crew members
+    const hasCrewMembers = crewMembers.length > 0;
+
+    if (tripDays === 0 && hasActiveLegs && hasCrewMembers) {
+        // Show warning
+        tripDaysInput.classList.add('needs-attention');
+        tripDaysHelper.className = 'trip-days-helper warning';
+        tripDaysHelper.textContent = '⚠️ Don\'t forget to set trip days for crew cost calculation';
+    } else if (tripDays > 0 && hasCrewMembers) {
+        // Show success state with crew service total
+        tripDaysInput.classList.remove('needs-attention');
+        tripDaysHelper.className = 'trip-days-helper success';
+
+        // Calculate crew service total
+        let crewServiceTotal = 0;
+        crewMembers.forEach(crew => {
+            const dailyRate = parseFloat(crew.dailyRate) || 0;
+            crewServiceTotal += dailyRate * tripDays;
+        });
+
+        tripDaysHelper.textContent = `Crew service: $${crewServiceTotal.toFixed(2)} (${crewMembers.length} crew × ${tripDays} ${tripDays === 1 ? 'day' : 'days'})`;
+    } else {
+        // Clear warning
+        tripDaysInput.classList.remove('needs-attention');
+        tripDaysHelper.className = 'trip-days-helper';
+        tripDaysHelper.textContent = '';
+    }
 }
 
 function validateHotelStays(input) {
@@ -820,14 +881,25 @@ function updateTripEstimate() {
     const fuelPrice = fuelParams.fuelPrice;
     const apuFuelBurn = fuelParams.apuFuelBurn;
 
-    // Calculate total fuel in lbs
+    // Calculate total fuel in lbs (flight fuel only)
     let totalFuelLbs = 0;
     legs.forEach(leg => {
         totalFuelLbs += parseInt(leg.fuelBurn, 10) || 0;
     });
 
-    // Calculate total gallons
-    const totalGallons = fuelDensity > 0 ? (totalFuelLbs / fuelDensity) : 0;
+    // Only count legs that have actual data (non-zero fuel burn or flight time)
+    const numLegs = legs.filter(leg => {
+        const hasFuelBurn = parseInt(leg.fuelBurn, 10) > 0;
+        const hasFlightTime = (parseInt(leg.hours, 10) || 0) > 0 || (parseInt(leg.minutes, 10) || 0) > 0;
+        return hasFuelBurn || hasFlightTime;
+    }).length;
+
+    // Calculate total APU fuel
+    const totalApuFuelLbs = numLegs * apuFuelBurn;
+
+    // Calculate total gallons (includes flight fuel + APU fuel)
+    const totalFuelLbsWithApu = totalFuelLbs + totalApuFuelLbs;
+    const totalGallons = fuelDensity > 0 ? (totalFuelLbsWithApu / fuelDensity) : 0;
 
     // Get hourly programs
     const hourlyPrograms = getHourlyPrograms();
@@ -836,15 +908,8 @@ function updateTripEstimate() {
     // 1. Hourly Subtotal = Total Flight Hours × Hourly Rate
     const hourlySubtotal = totalFlightHours * hourlyRate;
 
-    // 2. Fuel Subtotal = (Total Gallons × Fuel Price) + (Number of Legs × APU Fuel Burn / Fuel Density × Fuel Price)
-    // Only count legs that have actual data (non-zero fuel burn or flight time)
-    const numLegs = legs.filter(leg => {
-        const hasFuelBurn = parseInt(leg.fuelBurn, 10) > 0;
-        const hasFlightTime = (parseInt(leg.hours, 10) || 0) > 0 || (parseInt(leg.minutes, 10) || 0) > 0;
-        return hasFuelBurn || hasFlightTime;
-    }).length;
-    const apuFuelCost = numLegs * (apuFuelBurn / fuelDensity) * fuelPrice;
-    const fuelSubtotal = (totalGallons * fuelPrice) + apuFuelCost;
+    // 2. Fuel Subtotal = Total Gallons (including APU) × Fuel Price
+    const fuelSubtotal = totalGallons * fuelPrice;
 
     // Get crew expenses data
     const crewExpensesData = getCrewExpenses();

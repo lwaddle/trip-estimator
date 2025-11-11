@@ -255,6 +255,36 @@ h2 {
     margin-bottom: 30px;
 }
 
+.info-icon {
+    display: inline-block;
+    margin-left: 5px;
+    color: #3498db;
+    cursor: help;
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.trip-days-helper {
+    font-size: 12px;
+    margin-top: 5px;
+    min-height: 18px;
+    line-height: 1.4;
+}
+
+.trip-days-helper.warning {
+    color: #e67e22;
+    font-weight: 500;
+}
+
+.trip-days-helper.success {
+    color: #27ae60;
+}
+
+#tripDays.needs-attention {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+}
+
 .expense-subsection {
     margin-bottom: 25px;
 }
