@@ -340,6 +340,49 @@
                 </div>
             </div>
         </section>
+
+        <section class="miscellaneous-section">
+            <div class="section-header">
+                <h2>Miscellaneous</h2>
+            </div>
+
+            <div class="miscellaneous-fields">
+                <div class="field-group">
+                    <label for="tripCoordinationFee">Trip Coordination Fee ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="tripCoordinationFee"
+                        value="0.00"
+                        oninput="validateMiscellaneousCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="otherMiscellaneous">Other ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="otherMiscellaneous"
+                        value="0.00"
+                        oninput="validateMiscellaneousCost(this)"
+                    >
+                </div>
+            </div>
+        </section>
+
+        <section class="trip-notes-section">
+            <div class="section-header">
+                <h2>Trip Notes</h2>
+            </div>
+
+            <div class="trip-notes-container">
+                <textarea
+                    id="tripNotes"
+                    rows="8"
+                    placeholder="Optional notes about the trip (e.g., client preferences, special handling, overnight particulars)"
+                ></textarea>
+            </div>
+        </section>
     </div>
 
     <script src="script.js"></script>
