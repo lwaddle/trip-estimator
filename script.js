@@ -18,6 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add 2 default crew members (both pilots)
     addCrewRole();
     addCrewRole();
+
+    // Auto-select input field contents on focus
+    document.addEventListener('focusin', (e) => {
+        if (e.target.matches('input[type="text"], input[type="number"]')) {
+            setTimeout(() => e.target.select(), 0);
+        }
+    });
 });
 
 function addLeg() {
