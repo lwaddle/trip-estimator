@@ -1,237 +1,436 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Trip Estimator</title>
-  <link rel="stylesheet" href="assets/app.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip Cost Estimator</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="wrap">
-    <h1>Trip Estimator</h1>
+    <div class="container">
+        <h1>Private Jet Trip Cost Estimator</h1>
 
-    <div class="grid">
-
-      <!-- Flight Data -->
-      <section class="panel" id="flightDataPanel">
-        <div class="subhead">Flight Data</div>
-        <table aria-label="Leg entries" id="legsTable">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Time (HH:MM)</th>
-              <th>Fuel (lb)</th>
-              <th class="right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="legsBody"></tbody>
-        </table>
-        <div id="legsCards" class="card-list" aria-live="polite"></div>
-
-        <div class="btnbar" style="margin-top:10px">
-          <button class="secondary" id="addLegBtn">+ Add Leg</button>
-          <button class="ghost" id="clearLegsBtn">Reset Legs</button>
-        </div>
-
-        <div class="row-3 kpi">
-          <div class="card"><div class="label">Total Time</div><div class="value" id="totalTimeHHMM">0:00</div></div>
-          <div class="card"><div class="label">Total Hours (decimal)</div><div class="value" id="totalHoursDec">0.00</div></div>
-          <div class="card"><div class="label">Total Fuel</div><div class="value"><span id="totalFuelLb">0</span> lb • <span id="totalFuelGal">0.0</span> gal</div></div>
-        </div>
-
-        <details style="margin-top:12px">
-          <summary>Fuel Parameters</summary>
-          <div class="row-4" style="margin-top:8px">
-            <div>
-              <label for="jetADensity">Jet-A Density (lb/gal)</label>
-              <input type="number" id="jetADensity" step="0.01" min="5.5" max="7.0" value="6.7" />
+        <section class="flight-legs-section">
+            <div class="section-header">
+                <h2>Flight Legs</h2>
             </div>
-            <div>
-              <label for="fuelPrice">Fuel Price (/gal)</label>
-              <input type="number" id="fuelPrice" value="5.75" min="0" step="0.01" />
+
+            <div id="legsContainer"></div>
+
+            <button id="addLegBtn" class="btn-primary">Add Leg</button>
+        </section>
+
+        <section class="summary-section">
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="summary-label">Total Flight Time</div>
+                    <div class="summary-value" id="totalFlightTime">0:00</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Total Fuel (lbs)</div>
+                    <div class="summary-value" id="totalFuelLbs">0</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Total Gallons</div>
+                    <div class="summary-value" id="totalGallons">0.00</div>
+                </div>
             </div>
-            <div>
-              <label for="apuFuelPerLeg">APU Fuel Burn (lb/leg)</label>
-              <input type="number" id="apuFuelPerLeg" value="100" min="0" step="1" />
+        </section>
+
+        <section class="fuel-parameters-section">
+            <div class="section-header">
+                <h2>Fuel Parameters</h2>
             </div>
-          </div>
-        </details>
 
-      <!-- Crew Day Rates -->
-      <section class="panel" id="crewRatesPanel">
-        <div class="subhead">Crew Day Rates (service fees per day)</div>
-
-        <table aria-label="Crew day rates" id="crewRatesTable">
-          <thead>
-            <tr>
-              <th>Role</th>
-              <th>Daily Rate</th>
-              <th class="right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="crewRatesBody"></tbody>
-        </table>
-
-        <div id="crewRatesCards" class="card-list" aria-live="polite"></div>
-
-        <div class="btnbar" style="margin-top:10px">
-          <button class="secondary" id="addCrewRateBtn">+ Add Role</button>
-          <button class="ghost" id="clearCrewRatesBtn">Reset Roles</button>
-        </div>
-        <div class="muted" style="margin-top:6px">Defaults to 2 Pilots × 1500/day. Add a Flight Attendant if needed.</div>
-      </section>
-
-      <!-- Crew Expenses -->
-      <section class="panel" id="crewPanel">
-        <div class="subhead">Crew Expenses (per day, per person)</div>
-
-        <div class="row-3">
-          <div>
-            <label for="tripDays">Trip Days (calendar)</label>
-            <input type="number" id="tripDays" value="0" min="0" step="1" />
-          </div>
-          <div>
-            <label for="rentalCarTotal">Rental Car (total for trip)</label>
-            <input type="number" id="rentalCarTotal" value="0" min="0" step="0.01" />
-          </div>
-          <div>
-            <label for="mileageTotal">Mileage (total for trip)</label>
-            <input type="number" id="mileageTotal" value="0" min="0" step="0.01" />
-          </div>
-        </div>
-
-        <div class="row-3" style="margin-top:8px">
-          <div>
-            <label for="airfareTotal">Airfare (total for trip)</label>
-            <input type="number" id="airfareTotal" value="0" min="0" step="0.01" />
-          </div>
-          <div>
-            <label for="hotelNights">Hotel Nights</label>
-            <input type="number" id="hotelNights" value="0" min="0" step="1" />
-            <div class="muted" style="font-size:.85rem;margin-top:4px">Defaults to Trip Days − 1; edit for red-eyes/odd timing.</div>
-          </div>
-        </div>
-
-        <div class="row-3" id="itemizedGroup" style="margin-top:8px">
-          <div>
-            <label for="hotelRate">Hotel / night / person</label>
-            <input type="number" id="hotelRate" value="0" min="0" step="0.01" />
-          </div>
-          <div>
-            <label for="mealsPerDay">Meals / day / person</label>
-            <input type="number" id="mealsPerDay" value="0" min="0" step="0.01" />
-          </div>
-          <div>
-            <label for="otherPerDay">Other / day / person</label>
-            <input type="number" id="otherPerDay" value="0" min="0" step="0.01" />
-          </div>
-        </div>
-        <div class="muted" id="crewAutoCountNote" style="margin-top:6px">Crew count is calculated from “Crew Day Rates”.</div>
-      </section>
-
-      <!-- Hourly Programs -->
-      <section class="panel" id="hourlyProgramsPanel">
-        <div class="subhead">Hourly Programs & Reserves</div>
-        <div class="row-3">
-          <div>
-            <label for="ratePrograms">Maintenance Programs (/hr)</label>
-            <input type="number" id="ratePrograms" value="1048" min="0" step="0.01" />
-          </div>
-          <div>
-            <label for="addlHourly">Additional Hourly (/hr)</label>
-            <input type="number" id="addlHourly" value="0" min="0" step="0.01" />
-          </div>
-          <div>
-            <label for="engineReserveHourly">Engine/APU Reserve (/hr)</label>
-            <input type="number" id="engineReserveHourly" value="0" min="0" step="0.01" />
-          </div>
-        </div>
-      </section>
-
-      <!-- Airport & Ground -->
-      <section class="panel" id="airportPanel">
-        <div class="subhead">Airport & Ground Costs</div>
-        <div class="row-4">
-          <div><label for="landingFeeTotal">Landing Fees</label><input type="number" id="landingFeeTotal" value="0" min="0" step="0.01" /></div>
-          <div><label for="cateringTotal">Catering</label><input type="number" id="cateringTotal" value="0" min="0" step="0.01" /></div>
-          <div><label for="handlingTotal">Handling</label><input type="number" id="handlingTotal" value="0" min="0" step="0.01" /></div>
-          <div><label for="paxGroundTransportTotal">Passenger Ground Transport</label><input type="number" id="paxGroundTransportTotal" value="0" min="0" step="0.01" /></div>
-        </div>
-        <div class="row-4" style="margin-top:8px">
-          <div><label for="facilityFeesTotal">Facility Fees</label><input type="number" id="facilityFeesTotal" value="0" min="0" step="0.01" /></div>
-          <div><label for="specialEventFeesTotal">Special Event Fees</label><input type="number" id="specialEventFeesTotal" value="0" min="0" step="0.01" /></div>
-          <div><label for="rampParkingTotal">Ramp/Parking</label><input type="number" id="rampParkingTotal" value="0" min="0" step="0.01" /></div>
-          <div><label for="customsTotal">Customs</label><input type="number" id="customsTotal" value="0" min="0" step="0.01" /></div>
-        </div>
-        <div class="row-4" style="margin-top:8px">
-          <div><label for="hangarTotal">Hangar</label><input type="number" id="hangarTotal" value="0" min="0" step="0.01" /></div>
-          <div><label for="otherAirportTotal">Other</label><input type="number" id="otherAirportTotal" value="0" min="0" step="0.01" /></div>
-        </div>
-      </section>
-
-      <!-- Misc -->
-      <section class="panel" id="miscPanel">
-        <div class="subhead">Miscellaneous & Indirect</div>
-        <div class="row-4">
-          <div><label for="tripCoordFee">Trip Coordination Fee</label><input type="number" id="tripCoordFee" value="0" min="0" step="0.01" /></div>
-          <div><label for="miscOther">Other</label><input type="number" id="miscOther" value="0" min="0" step="0.01" /></div>
-        </div>
-      </section>
-
-      <!-- Notes -->
-      <section class="panel" id="notesPanel">
-        <div class="subhead">Trip Notes</div>
-        <textarea id="tripNotes" placeholder="Optional notes about the trip (e.g., client preferences, special handling, overnight particulars)..."></textarea>
-      </section>
-
-      <!-- Outputs -->
-      <section class="panel" id="outputsPanel">
-        <div class="subhead">Estimate — Outputs</div>
-        <table aria-label="Outputs">
-          <tbody>
-            <tr><td class="muted">Hourly Subtotal</td><td class="right" id="outHourlySubtotal">$0.00</td></tr>
-            <tr><td class="muted">Fuel Subtotal</td><td class="right" id="outFuelSubtotal">$0.00</td></tr>
-            <tr><td class="muted">Crew Service (day rates)</td><td class="right" id="outCrewService">$0.00</td></tr>
-            <tr><td class="muted">Crew Expenses</td><td class="right" id="outCrewLiving">$0.00</td></tr>
-            <tr><td class="muted">Crew Subtotal</td><td class="right" id="outCrewSubtotal">$0.00</td></tr>
-            <tr><td class="muted">Airport & Ground Subtotal</td><td class="right" id="outAirportSubtotal">$0.00</td></tr>
-            <tr><td class="muted">Miscellaneous Subtotal</td><td class="right" id="outMiscSubtotal">$0.00</td></tr>
-            <tr><th class="right">Estimated Total</th><th class="right total" id="outGrandTotal">$0.00</th></tr>
-          </tbody>
-        </table>
-        <div class="row" style="margin-top:8px">
-          <div><span class="muted">Cost per Hour:</span> <strong id="outCostPerHour">$0.00</strong></div>
-          <div class="right"><span class="muted">Cost per Leg:</span> <strong id="outCostPerLeg">$0.00</strong></div>
-        </div>
-        <div id="warn" class="warn" style="display:none"></div>
-        <div class="copyout" id="copyPreview" style="display:none"></div>
-
-        <div class="sticky-bar" id="totalsSticky" aria-hidden="true" style="margin-top:12px">
-          <div class="sticky-flex">
-            <div><span class="muted">Estimated Total:</span> <strong id="outGrandTotalMini">$0.00</strong></div>
-            <div style="display:flex;gap:8px">
-              <button class="secondary" id="calcBtnMini">Calculate</button>
-              <button class="ghost" id="copyBtnMini">Copy</button>
+            <div class="fuel-params-fields">
+                <div class="field-group">
+                    <label for="fuelDensity">Fuel Density (lbs/gal)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="fuelDensity"
+                        value="6.70"
+                        oninput="validateFuelDensity(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="fuelPrice">Average Fuel Price ($/gal)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="fuelPrice"
+                        value="5.93"
+                        oninput="validateFuelPrice(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="apuFuelBurn">APU Fuel Burn (lbs/leg)</label>
+                    <input
+                        type="number"
+                        id="apuFuelBurn"
+                        min="0"
+                        step="1"
+                        value="100"
+                        oninput="validateApuFuelBurn(this)"
+                    >
+                </div>
             </div>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- Actions -->
-      <section class="panel" id="actionsPanel">
-        <div class="subhead">Actions</div>
-        <div class="btnbar">
-          <button class="primary" id="calcBtn">Calculate</button>
-          <button class="secondary" id="copyBtn">Copy Summary</button>
-          <button class="ghost" id="resetAllBtn">Reset All</button>
-        </div>
-      </section>
+        <section class="crew-rates-section">
+            <div class="section-header">
+                <h2>Crew Day Rates</h2>
+            </div>
 
+            <div id="crewContainer"></div>
+
+            <button id="addRoleBtn" class="btn-primary">Add Role</button>
+        </section>
+
+        <section class="crew-expenses-section">
+            <div class="section-header">
+                <h2>Crew Expenses</h2>
+            </div>
+
+            <div class="expense-subsection">
+                <h3 class="subsection-title">Trip Duration</h3>
+                <div class="expense-fields">
+                    <div class="field-group">
+                        <label for="tripDays">
+                            Trip Days
+                            <span class="info-icon" title="Trip Days = number of days crew charges their daily rate. May differ from calendar days (e.g., pilots might fly out same-day and return a week later = 2 trip days for a week-long trip).">ⓘ</span>
+                        </label>
+                        <input
+                            type="number"
+                            id="tripDays"
+                            min="0"
+                            step="1"
+                            value="0"
+                            oninput="validateTripDays(this)"
+                        >
+                        <div class="trip-days-helper" id="tripDaysHelper"></div>
+                    </div>
+                    <div class="field-group">
+                        <label for="hotelStays">Hotel Stays (nights)</label>
+                        <input
+                            type="number"
+                            id="hotelStays"
+                            min="0"
+                            step="1"
+                            value="0"
+                            oninput="validateHotelStays(this)"
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <div class="expense-subsection">
+                <h3 class="subsection-title">Per Person Expenses</h3>
+                <div class="expense-fields">
+                    <div class="field-group">
+                        <label for="hotelRate">Hotel ($/night/person)</label>
+                        <input
+                            type="text"
+                            inputmode="decimal"
+                            id="hotelRate"
+                            value="0.00"
+                            oninput="validateExpenseAmount(this)"
+                        >
+                    </div>
+                    <div class="field-group">
+                        <label for="mealsRate">Meals ($/day/person)</label>
+                        <input
+                            type="text"
+                            inputmode="decimal"
+                            id="mealsRate"
+                            value="0.00"
+                            oninput="validateExpenseAmount(this)"
+                        >
+                    </div>
+                    <div class="field-group">
+                        <label for="otherRate">Other ($/day/person)</label>
+                        <input
+                            type="text"
+                            inputmode="decimal"
+                            id="otherRate"
+                            value="0.00"
+                            oninput="validateExpenseAmount(this)"
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <div class="expense-subsection">
+                <h3 class="subsection-title">Total Trip Expenses</h3>
+                <div class="expense-fields">
+                    <div class="field-group">
+                        <label for="rentalCar">Rental Car ($)</label>
+                        <input
+                            type="text"
+                            inputmode="decimal"
+                            id="rentalCar"
+                            value="0.00"
+                            oninput="validateExpenseAmount(this)"
+                        >
+                    </div>
+                    <div class="field-group">
+                        <label for="airfare">Airfare ($)</label>
+                        <input
+                            type="text"
+                            inputmode="decimal"
+                            id="airfare"
+                            value="0.00"
+                            oninput="validateExpenseAmount(this)"
+                        >
+                    </div>
+                    <div class="field-group">
+                        <label for="mileage">Mileage ($)</label>
+                        <input
+                            type="text"
+                            inputmode="decimal"
+                            id="mileage"
+                            value="0.00"
+                            oninput="validateExpenseAmount(this)"
+                        >
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="hourly-programs-section">
+            <div class="section-header">
+                <h2>Hourly Programs & Reserves</h2>
+            </div>
+
+            <div class="hourly-fields">
+                <div class="field-group">
+                    <label for="maintenancePrograms">Maintenance Programs ($/hour)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="maintenancePrograms"
+                        value="1048.00"
+                        oninput="validateHourlyRate(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="engineApu">Engine/APU ($/hour)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="engineApu"
+                        value="0.00"
+                        oninput="validateHourlyRate(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="additional">Additional ($/hour)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="additional"
+                        value="0.00"
+                        oninput="validateHourlyRate(this)"
+                    >
+                </div>
+            </div>
+        </section>
+
+        <section class="airport-ground-section">
+            <div class="section-header">
+                <h2>Airport & Ground Costs</h2>
+            </div>
+
+            <div class="airport-ground-fields">
+                <div class="field-group">
+                    <label for="landingFees">Landing Fees ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="landingFees"
+                        value="0.00"
+                        oninput="validateAirportGroundCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="catering">Catering ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="catering"
+                        value="0.00"
+                        oninput="validateAirportGroundCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="handling">Handling ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="handling"
+                        value="0.00"
+                        oninput="validateAirportGroundCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="passengerGroundTransport">Passenger Ground Transport ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="passengerGroundTransport"
+                        value="0.00"
+                        oninput="validateAirportGroundCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="facilityFees">Facility Fees ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="facilityFees"
+                        value="0.00"
+                        oninput="validateAirportGroundCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="specialEventFees">Special Event Fees ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="specialEventFees"
+                        value="0.00"
+                        oninput="validateAirportGroundCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="rampParking">Ramp/Parking ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="rampParking"
+                        value="0.00"
+                        oninput="validateAirportGroundCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="customs">Customs ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="customs"
+                        value="0.00"
+                        oninput="validateAirportGroundCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="hangar">Hangar ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="hangar"
+                        value="0.00"
+                        oninput="validateAirportGroundCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="otherAirportCosts">Other ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="otherAirportCosts"
+                        value="0.00"
+                        oninput="validateAirportGroundCost(this)"
+                    >
+                </div>
+            </div>
+        </section>
+
+        <section class="miscellaneous-section">
+            <div class="section-header">
+                <h2>Miscellaneous</h2>
+            </div>
+
+            <div class="miscellaneous-fields">
+                <div class="field-group">
+                    <label for="tripCoordinationFee">Trip Coordination Fee ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="tripCoordinationFee"
+                        value="0.00"
+                        oninput="validateMiscellaneousCost(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="otherMiscellaneous">Other ($)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="otherMiscellaneous"
+                        value="0.00"
+                        oninput="validateMiscellaneousCost(this)"
+                    >
+                </div>
+            </div>
+        </section>
+
+        <section class="trip-notes-section">
+            <div class="section-header">
+                <h2>Trip Notes</h2>
+            </div>
+
+            <div class="trip-notes-container">
+                <textarea
+                    id="tripNotes"
+                    rows="8"
+                    placeholder="Optional notes about the trip (e.g., client preferences, special handling, overnight particulars)"
+                ></textarea>
+            </div>
+        </section>
+
+        <section class="trip-estimate-section">
+            <div class="section-header">
+                <h2>Trip Estimate</h2>
+            </div>
+
+            <div class="estimate-container">
+                <div class="estimate-row">
+                    <span class="estimate-label">Hourly Subtotal</span>
+                    <span class="estimate-value" id="hourlySubtotal">$0.00</span>
+                </div>
+                <div class="estimate-row">
+                    <span class="estimate-label">Fuel Subtotal</span>
+                    <span class="estimate-value" id="fuelSubtotal">$0.00</span>
+                </div>
+                <div class="estimate-row">
+                    <span class="estimate-label">Crew Service (day rates)</span>
+                    <span class="estimate-value" id="crewService">$0.00</span>
+                </div>
+                <div class="estimate-row">
+                    <span class="estimate-label">Crew Expenses</span>
+                    <span class="estimate-value" id="crewExpensesTotal">$0.00</span>
+                </div>
+                <div class="estimate-row">
+                    <span class="estimate-label">Crew Subtotal</span>
+                    <span class="estimate-value" id="crewSubtotal">$0.00</span>
+                </div>
+                <div class="estimate-row">
+                    <span class="estimate-label">Airport & Ground Subtotal</span>
+                    <span class="estimate-value" id="airportGroundSubtotal">$0.00</span>
+                </div>
+                <div class="estimate-row">
+                    <span class="estimate-label">Miscellaneous Subtotal</span>
+                    <span class="estimate-value" id="miscellaneousSubtotal">$0.00</span>
+                </div>
+                <div class="estimate-divider"></div>
+                <div class="estimate-row estimate-total">
+                    <span class="estimate-label">Estimated Total</span>
+                    <span class="estimate-value" id="estimatedTotal">$0.00</span>
+                </div>
+            </div>
+        </section>
     </div>
-  </div>
 
-  <script src="assets/app.js" defer></script>
+    <script src="script.js"></script>
 </body>
 </html>
