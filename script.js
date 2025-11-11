@@ -537,3 +537,100 @@ function getAllCrewData() {
         dailyRate: parseFloat(crew.dailyRate) || 0
     }));
 }
+
+// Crew Expenses Validation
+function validateTripDays(input) {
+    let value = input.value;
+
+    // Remove any non-digit characters
+    value = value.replace(/[^\d]/g, '');
+
+    // Handle empty input
+    if (value === '') {
+        input.value = '';
+        input.classList.remove('error');
+        return;
+    }
+
+    // Convert to number
+    let tripDays = parseInt(value, 10);
+
+    // Ensure positive whole number
+    if (isNaN(tripDays) || tripDays < 0) {
+        tripDays = 0;
+    }
+
+    input.value = tripDays;
+    input.classList.remove('error');
+}
+
+function validateHotelStays(input) {
+    let value = input.value;
+
+    // Remove any non-digit characters
+    value = value.replace(/[^\d]/g, '');
+
+    // Handle empty input
+    if (value === '') {
+        input.value = '';
+        input.classList.remove('error');
+        return;
+    }
+
+    // Convert to number
+    let hotelStays = parseInt(value, 10);
+
+    // Ensure positive whole number
+    if (isNaN(hotelStays) || hotelStays < 0) {
+        hotelStays = 0;
+    }
+
+    input.value = hotelStays;
+    input.classList.remove('error');
+}
+
+function validateExpenseAmount(input) {
+    const cursorPosition = input.selectionStart;
+    const oldValue = input.value;
+    let value = oldValue;
+
+    // Allow only numbers and one decimal point
+    value = value.replace(/[^\d.]/g, '');
+
+    // Prevent multiple decimal points
+    const decimalCount = (value.match(/\./g) || []).length;
+    if (decimalCount > 1) {
+        const firstDecimalIndex = value.indexOf('.');
+        value = value.substring(0, firstDecimalIndex + 1) +
+                value.substring(firstDecimalIndex + 1).replace(/\./g, '');
+    }
+
+    // Limit to two decimal places
+    const decimalIndex = value.indexOf('.');
+    if (decimalIndex !== -1 && value.length > decimalIndex + 3) {
+        value = value.substring(0, decimalIndex + 3);
+    }
+
+    // Only update if value changed
+    if (value !== oldValue) {
+        input.value = value;
+        const diff = oldValue.length - value.length;
+        input.setSelectionRange(cursorPosition - diff, cursorPosition - diff);
+    }
+
+    input.classList.remove('error');
+}
+
+// Helper function to get crew expenses
+function getCrewExpenses() {
+    return {
+        tripDays: parseInt(document.getElementById('tripDays').value, 10) || 0,
+        hotelStays: parseInt(document.getElementById('hotelStays').value, 10) || 0,
+        hotelRate: parseFloat(document.getElementById('hotelRate').value) || 0,
+        mealsRate: parseFloat(document.getElementById('mealsRate').value) || 0,
+        otherRate: parseFloat(document.getElementById('otherRate').value) || 0,
+        rentalCar: parseFloat(document.getElementById('rentalCar').value) || 0,
+        airfare: parseFloat(document.getElementById('airfare').value) || 0,
+        mileage: parseFloat(document.getElementById('mileage').value) || 0
+    };
+}

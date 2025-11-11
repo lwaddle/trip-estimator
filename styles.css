@@ -250,6 +250,30 @@ h2 {
     margin-top: 15px;
 }
 
+/* Crew Expenses Section */
+.crew-expenses-section {
+    margin-bottom: 30px;
+}
+
+.expense-subsection {
+    margin-bottom: 25px;
+}
+
+.subsection-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #34495e;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.expense-fields {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
 /* Mobile styles */
 @media (max-width: 768px) {
     .container {
@@ -299,6 +323,11 @@ h2 {
         grid-template-columns: 1fr;
         gap: 15px;
     }
+
+    .expense-fields {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
 }
 
 /* Tablet styles */
@@ -316,5 +345,10 @@ h2 {
     .fuel-params-fields {
         grid-template-columns: 1fr;
         gap: 15px;
+    }
+
+    .expense-fields {
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
 }
