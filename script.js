@@ -676,3 +676,52 @@ function getHourlyPrograms() {
         additional: parseFloat(document.getElementById('additional').value) || 0
     };
 }
+
+// Airport & Ground Costs Validation
+function validateAirportGroundCost(input) {
+    const cursorPosition = input.selectionStart;
+    const oldValue = input.value;
+    let value = oldValue;
+
+    // Allow only numbers and one decimal point
+    value = value.replace(/[^\d.]/g, '');
+
+    // Prevent multiple decimal points
+    const decimalCount = (value.match(/\./g) || []).length;
+    if (decimalCount > 1) {
+        const firstDecimalIndex = value.indexOf('.');
+        value = value.substring(0, firstDecimalIndex + 1) +
+                value.substring(firstDecimalIndex + 1).replace(/\./g, '');
+    }
+
+    // Limit to two decimal places
+    const decimalIndex = value.indexOf('.');
+    if (decimalIndex !== -1 && value.length > decimalIndex + 3) {
+        value = value.substring(0, decimalIndex + 3);
+    }
+
+    // Only update if value changed
+    if (value !== oldValue) {
+        input.value = value;
+        const diff = oldValue.length - value.length;
+        input.setSelectionRange(cursorPosition - diff, cursorPosition - diff);
+    }
+
+    input.classList.remove('error');
+}
+
+// Helper function to get airport & ground costs
+function getAirportGroundCosts() {
+    return {
+        landingFees: parseFloat(document.getElementById('landingFees').value) || 0,
+        catering: parseFloat(document.getElementById('catering').value) || 0,
+        handling: parseFloat(document.getElementById('handling').value) || 0,
+        passengerGroundTransport: parseFloat(document.getElementById('passengerGroundTransport').value) || 0,
+        facilityFees: parseFloat(document.getElementById('facilityFees').value) || 0,
+        specialEventFees: parseFloat(document.getElementById('specialEventFees').value) || 0,
+        rampParking: parseFloat(document.getElementById('rampParking').value) || 0,
+        customs: parseFloat(document.getElementById('customs').value) || 0,
+        hangar: parseFloat(document.getElementById('hangar').value) || 0,
+        otherAirportCosts: parseFloat(document.getElementById('otherAirportCosts').value) || 0
+    };
+}
