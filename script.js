@@ -129,6 +129,9 @@ function removeLeg(legId) {
 
     // Renumber all remaining legs
     renumberLegs();
+
+    // Update summary
+    updateSummary();
 }
 
 function renumberLegs() {
@@ -146,6 +149,7 @@ function updateLegData(legId, field, value) {
     const leg = legs.find(l => l.id === legId);
     if (leg) {
         leg[field] = value;
+        updateSummary();
     }
 }
 
@@ -267,6 +271,9 @@ function validateFuelDensity(input) {
     }
 
     input.classList.remove('error');
+
+    // Update summary since fuel density affects total gallons
+    updateSummary();
 }
 
 function validateFuelPrice(input) {
@@ -345,4 +352,34 @@ function getAllLegData() {
         flightTime: `${leg.hours || '0'}:${(leg.minutes || '0').padStart(2, '0')}`,
         fuelBurn: parseInt(leg.fuelBurn, 10) || 0
     }));
+}
+
+// Calculate and update summary section
+function updateSummary() {
+    // Calculate total flight time
+    let totalMinutes = 0;
+    legs.forEach(leg => {
+        const hours = parseInt(leg.hours, 10) || 0;
+        const minutes = parseInt(leg.minutes, 10) || 0;
+        totalMinutes += (hours * 60) + minutes;
+    });
+
+    const totalHours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+    const formattedTime = `${totalHours}:${remainingMinutes.toString().padStart(2, '0')}`;
+
+    // Calculate total fuel in lbs
+    let totalFuelLbs = 0;
+    legs.forEach(leg => {
+        totalFuelLbs += parseInt(leg.fuelBurn, 10) || 0;
+    });
+
+    // Calculate total gallons
+    const fuelDensity = parseFloat(document.getElementById('fuelDensity').value) || 6.7;
+    const totalGallons = fuelDensity > 0 ? (totalFuelLbs / fuelDensity) : 0;
+
+    // Update the display
+    document.getElementById('totalFlightTime').textContent = formattedTime;
+    document.getElementById('totalFuelLbs').textContent = totalFuelLbs.toLocaleString();
+    document.getElementById('totalGallons').textContent = totalGallons.toFixed(2);
 }
