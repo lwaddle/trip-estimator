@@ -274,6 +274,17 @@ h2 {
     gap: 15px;
 }
 
+/* Hourly Programs & Reserves Section */
+.hourly-programs-section {
+    margin-bottom: 30px;
+}
+
+.hourly-fields {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
 /* Mobile styles */
 @media (max-width: 768px) {
     .container {
@@ -328,6 +339,11 @@ h2 {
         grid-template-columns: 1fr;
         gap: 12px;
     }
+
+    .hourly-fields {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
 }
 
 /* Tablet styles */
@@ -350,5 +366,10 @@ h2 {
     .expense-fields {
         grid-template-columns: 1fr;
         gap: 12px;
+    }
+
+    .hourly-fields {
+        grid-template-columns: 1fr;
+        gap: 15px;
     }
 }

@@ -192,6 +192,45 @@
                 </div>
             </div>
         </section>
+
+        <section class="hourly-programs-section">
+            <div class="section-header">
+                <h2>Hourly Programs & Reserves</h2>
+            </div>
+
+            <div class="hourly-fields">
+                <div class="field-group">
+                    <label for="maintenancePrograms">Maintenance Programs ($/hour)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="maintenancePrograms"
+                        value="1048.00"
+                        oninput="validateHourlyRate(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="engineApu">Engine/APU ($/hour)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="engineApu"
+                        value="0.00"
+                        oninput="validateHourlyRate(this)"
+                    >
+                </div>
+                <div class="field-group">
+                    <label for="additional">Additional ($/hour)</label>
+                    <input
+                        type="text"
+                        inputmode="decimal"
+                        id="additional"
+                        value="0.00"
+                        oninput="validateHourlyRate(this)"
+                    >
+                </div>
+            </div>
+        </section>
     </div>
 
     <script src="script.js"></script>
