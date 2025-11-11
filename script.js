@@ -406,7 +406,14 @@ function updateSummary() {
     // Get APU Fuel Burn per leg
     const apuValue = document.getElementById('apuFuelBurn').value;
     const apuFuelBurn = apuValue === '' ? 0 : parseInt(apuValue, 10);
-    const numLegs = legs.length;
+
+    // Only count legs that have actual data (non-zero fuel burn or flight time)
+    const numLegs = legs.filter(leg => {
+        const hasFuelBurn = parseInt(leg.fuelBurn, 10) > 0;
+        const hasFlightTime = (parseInt(leg.hours, 10) || 0) > 0 || (parseInt(leg.minutes, 10) || 0) > 0;
+        return hasFuelBurn || hasFlightTime;
+    }).length;
+
     const totalApuFuelLbs = numLegs * apuFuelBurn;
 
     // Calculate total gallons (includes flight fuel + APU fuel)
