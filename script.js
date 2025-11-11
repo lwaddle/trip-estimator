@@ -102,7 +102,7 @@ function createLegRow(legData) {
                 </div>
             </div>
             <div class="field-group">
-                <label for="fuel-${legData.id}">Fuel Burn (lbs)</label>
+                <label for="fuel-${legData.id}">Flight Fuel Burn (lbs)</label>
                 <input
                     type="number"
                     id="fuel-${legData.id}"
@@ -336,7 +336,7 @@ function validateApuFuelBurn(input) {
     if (value === '') {
         input.value = '';
         input.classList.remove('error');
-        updateTripEstimate();
+        updateSummary();
         return;
     }
 
@@ -351,8 +351,8 @@ function validateApuFuelBurn(input) {
     input.value = apuFuelBurn;
     input.classList.remove('error');
 
-    // Update trip estimate since APU fuel burn affects fuel subtotal
-    updateTripEstimate();
+    // Update summary since APU fuel burn affects total gallons
+    updateSummary();
 }
 
 // Helper function to get fuel parameters
@@ -388,15 +388,21 @@ function updateSummary() {
     const remainingMinutes = totalMinutes % 60;
     const formattedTime = `${totalHours}:${remainingMinutes.toString().padStart(2, '0')}`;
 
-    // Calculate total fuel in lbs
+    // Calculate total fuel in lbs (flight fuel only)
     let totalFuelLbs = 0;
     legs.forEach(leg => {
         totalFuelLbs += parseInt(leg.fuelBurn, 10) || 0;
     });
 
-    // Calculate total gallons
+    // Get APU Fuel Burn per leg
+    const apuFuelBurn = parseInt(document.getElementById('apuFuelBurn').value, 10) || 0;
+    const numLegs = legs.length;
+    const totalApuFuelLbs = numLegs * apuFuelBurn;
+
+    // Calculate total gallons (includes flight fuel + APU fuel)
     const fuelDensity = parseFloat(document.getElementById('fuelDensity').value) || 6.7;
-    const totalGallons = fuelDensity > 0 ? (totalFuelLbs / fuelDensity) : 0;
+    const totalFuelLbsWithApu = totalFuelLbs + totalApuFuelLbs;
+    const totalGallons = fuelDensity > 0 ? (totalFuelLbsWithApu / fuelDensity) : 0;
 
     // Update the display
     document.getElementById('totalFlightTime').textContent = formattedTime;
@@ -831,7 +837,12 @@ function updateTripEstimate() {
     const hourlySubtotal = totalFlightHours * hourlyRate;
 
     // 2. Fuel Subtotal = (Total Gallons × Fuel Price) + (Number of Legs × APU Fuel Burn / Fuel Density × Fuel Price)
-    const numLegs = legs.length;
+    // Only count legs that have actual data (non-zero fuel burn or flight time)
+    const numLegs = legs.filter(leg => {
+        const hasFuelBurn = parseInt(leg.fuelBurn, 10) > 0;
+        const hasFlightTime = (parseInt(leg.hours, 10) || 0) > 0 || (parseInt(leg.minutes, 10) || 0) > 0;
+        return hasFuelBurn || hasFlightTime;
+    }).length;
     const apuFuelCost = numLegs * (apuFuelBurn / fuelDensity) * fuelPrice;
     const fuelSubtotal = (totalGallons * fuelPrice) + apuFuelCost;
 
