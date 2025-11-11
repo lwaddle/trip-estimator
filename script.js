@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const addRoleBtn = document.getElementById('addRoleBtn');
     addRoleBtn.addEventListener('click', addCrewRole);
+
+    // Add 2 default crew members (both pilots)
+    addCrewRole();
+    addCrewRole();
 });
 
 function addLeg() {
