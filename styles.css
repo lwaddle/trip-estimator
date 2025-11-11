@@ -371,7 +371,7 @@ h2 {
 
 /* Trip Estimate Section */
 .trip-estimate-section {
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 
 .estimate-container {
@@ -529,5 +529,118 @@ h2 {
     .miscellaneous-fields {
         grid-template-columns: 1fr;
         gap: 15px;
+    }
+}
+
+/* Summary Text Section */
+.summary-text-section {
+    margin-bottom: 20px;
+    background-color: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.summary-text-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.summary-text-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.btn-close {
+    background-color: transparent;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    color: #636e72;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.btn-close:hover {
+    color: #e74c3c;
+}
+
+#summaryTextArea {
+    width: 100%;
+    min-height: 300px;
+    padding: 15px;
+    border: 1px solid #dfe6e9;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+    line-height: 1.6;
+    resize: vertical;
+    background-color: white;
+    color: #2c3e50;
+}
+
+#summaryTextArea:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+/* Action Buttons Section */
+.action-buttons-section {
+    margin-bottom: 30px;
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.btn-action {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.2s;
+    min-width: 180px;
+}
+
+.btn-action.btn-primary {
+    background-color: #27ae60;
+    color: white;
+}
+
+.btn-action.btn-primary:hover {
+    background-color: #229954;
+}
+
+.btn-action.btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.btn-action.btn-secondary:hover {
+    background-color: #7f8c8d;
+}
+
+.btn-action:active {
+    transform: translateY(1px);
+}
+
+@media (max-width: 768px) {
+    .action-buttons-section {
+        flex-direction: column;
+    }
+
+    .btn-action {
+        width: 100%;
     }
 }
