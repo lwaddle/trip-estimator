@@ -234,6 +234,109 @@ function validateFuelBurn(input, legId) {
     input.classList.remove('error');
 }
 
+// Fuel Parameters Validation
+function validateFuelDensity(input) {
+    const cursorPosition = input.selectionStart;
+    const oldValue = input.value;
+    let value = oldValue;
+
+    // Allow only numbers and one decimal point
+    value = value.replace(/[^\d.]/g, '');
+
+    // Prevent multiple decimal points
+    const decimalCount = (value.match(/\./g) || []).length;
+    if (decimalCount > 1) {
+        // Keep only the first decimal point
+        const firstDecimalIndex = value.indexOf('.');
+        value = value.substring(0, firstDecimalIndex + 1) +
+                value.substring(firstDecimalIndex + 1).replace(/\./g, '');
+    }
+
+    // Limit to two decimal places (but allow typing)
+    const decimalIndex = value.indexOf('.');
+    if (decimalIndex !== -1 && value.length > decimalIndex + 3) {
+        value = value.substring(0, decimalIndex + 3);
+    }
+
+    // Only update if value changed
+    if (value !== oldValue) {
+        input.value = value;
+        // Adjust cursor position if characters were removed
+        const diff = oldValue.length - value.length;
+        input.setSelectionRange(cursorPosition - diff, cursorPosition - diff);
+    }
+
+    input.classList.remove('error');
+}
+
+function validateFuelPrice(input) {
+    const cursorPosition = input.selectionStart;
+    const oldValue = input.value;
+    let value = oldValue;
+
+    // Allow only numbers and one decimal point
+    value = value.replace(/[^\d.]/g, '');
+
+    // Prevent multiple decimal points
+    const decimalCount = (value.match(/\./g) || []).length;
+    if (decimalCount > 1) {
+        // Keep only the first decimal point
+        const firstDecimalIndex = value.indexOf('.');
+        value = value.substring(0, firstDecimalIndex + 1) +
+                value.substring(firstDecimalIndex + 1).replace(/\./g, '');
+    }
+
+    // Limit to two decimal places (but allow typing)
+    const decimalIndex = value.indexOf('.');
+    if (decimalIndex !== -1 && value.length > decimalIndex + 3) {
+        value = value.substring(0, decimalIndex + 3);
+    }
+
+    // Only update if value changed
+    if (value !== oldValue) {
+        input.value = value;
+        // Adjust cursor position if characters were removed
+        const diff = oldValue.length - value.length;
+        input.setSelectionRange(cursorPosition - diff, cursorPosition - diff);
+    }
+
+    input.classList.remove('error');
+}
+
+function validateApuFuelBurn(input) {
+    let value = input.value;
+
+    // Remove any non-digit characters (including decimal points and minus signs)
+    value = value.replace(/[^\d]/g, '');
+
+    // Handle empty input
+    if (value === '') {
+        input.value = '';
+        input.classList.remove('error');
+        return;
+    }
+
+    // Convert to number
+    let apuFuelBurn = parseInt(value, 10);
+
+    // Ensure positive whole number
+    if (isNaN(apuFuelBurn) || apuFuelBurn < 0) {
+        apuFuelBurn = 0;
+    }
+
+    input.value = apuFuelBurn;
+    input.classList.remove('error');
+}
+
+// Helper function to get fuel parameters
+function getFuelParameters() {
+    return {
+        fuelDensity: parseFloat(document.getElementById('fuelDensity').value) || 6.7,
+        fuelPrice: parseFloat(document.getElementById('fuelPrice').value) || 5.93,
+        apuFuelBurn: parseInt(document.getElementById('apuFuelBurn').value, 10) || 100
+    };
+}
+
 // Helper function to get all leg data (for future use in calculations)
 function getAllLegData() {
     return legs.map(leg => ({
