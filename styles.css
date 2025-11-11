@@ -123,7 +123,8 @@ h2 {
     margin-bottom: 5px;
 }
 
-.field-group input {
+.field-group input,
+.field-group select {
     padding: 10px;
     border: 1px solid #dfe6e9;
     border-radius: 4px;
@@ -131,13 +132,19 @@ h2 {
     transition: border-color 0.2s;
 }
 
-.field-group input:focus {
+.field-group input:focus,
+.field-group select:focus {
     outline: none;
     border-color: #3498db;
 }
 
 .field-group input.error {
     border-color: #e74c3c;
+}
+
+.field-group select {
+    background-color: white;
+    cursor: pointer;
 }
 
 .time-inputs {
@@ -202,6 +209,47 @@ h2 {
     gap: 20px;
 }
 
+/* Crew Day Rates Section */
+.crew-rates-section {
+    margin-bottom: 30px;
+}
+
+#crewContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.crew-row {
+    border: 1px solid #dfe6e9;
+    border-radius: 6px;
+    padding: 15px;
+    background-color: #fafbfc;
+}
+
+.crew-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.crew-label {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 16px;
+}
+
+.crew-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+#addRoleBtn {
+    margin-top: 15px;
+}
+
 /* Mobile styles */
 @media (max-width: 768px) {
     .container {
@@ -217,7 +265,16 @@ h2 {
         width: 100%;
     }
 
+    #addRoleBtn {
+        width: 100%;
+    }
+
     .leg-fields {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .crew-fields {
         grid-template-columns: 1fr;
         gap: 12px;
     }

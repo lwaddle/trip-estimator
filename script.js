@@ -1,10 +1,16 @@
 let legCount = 0;
 const legs = [];
 
+let crewCount = 0;
+const crewMembers = [];
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     const addLegBtn = document.getElementById('addLegBtn');
     addLegBtn.addEventListener('click', addLeg);
+
+    const addRoleBtn = document.getElementById('addRoleBtn');
+    addRoleBtn.addEventListener('click', addCrewRole);
 });
 
 function addLeg() {
@@ -382,4 +388,145 @@ function updateSummary() {
     document.getElementById('totalFlightTime').textContent = formattedTime;
     document.getElementById('totalFuelLbs').textContent = totalFuelLbs.toLocaleString();
     document.getElementById('totalGallons').textContent = totalGallons.toFixed(2);
+}
+
+// Crew Role Management
+function addCrewRole() {
+    crewCount++;
+    const crewId = crewCount;
+
+    const crewData = {
+        id: crewId,
+        role: 'Pilot',
+        dailyRate: '1500.00'
+    };
+
+    crewMembers.push(crewData);
+
+    const crewContainer = document.getElementById('crewContainer');
+    const crewRow = createCrewRow(crewData);
+    crewContainer.appendChild(crewRow);
+}
+
+function createCrewRow(crewData) {
+    const crewRow = document.createElement('div');
+    crewRow.className = 'crew-row';
+    crewRow.dataset.crewId = crewData.id;
+
+    crewRow.innerHTML = `
+        <div class="crew-header">
+            <span class="crew-label">Crew Member ${getCrewNumber(crewData.id)}</span>
+            <button class="btn-delete" onclick="removeCrewRole(${crewData.id})">Delete</button>
+        </div>
+        <div class="crew-fields">
+            <div class="field-group">
+                <label for="role-${crewData.id}">Role</label>
+                <select
+                    id="role-${crewData.id}"
+                    data-crew-id="${crewData.id}"
+                    onchange="updateCrewData(${crewData.id}, 'role', this.value)"
+                >
+                    <option value="Pilot" ${crewData.role === 'Pilot' ? 'selected' : ''}>Pilot</option>
+                    <option value="Flight Attendant" ${crewData.role === 'Flight Attendant' ? 'selected' : ''}>Flight Attendant</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label for="dailyRate-${crewData.id}">Daily Rate ($)</label>
+                <input
+                    type="text"
+                    inputmode="decimal"
+                    id="dailyRate-${crewData.id}"
+                    data-crew-id="${crewData.id}"
+                    value="${crewData.dailyRate}"
+                    oninput="validateDailyRate(this, ${crewData.id})"
+                >
+            </div>
+        </div>
+    `;
+
+    return crewRow;
+}
+
+function getCrewNumber(crewId) {
+    const sortedCrew = crewMembers.sort((a, b) => a.id - b.id);
+    const index = sortedCrew.findIndex(crew => crew.id === crewId);
+    return index + 1;
+}
+
+function removeCrewRole(crewId) {
+    // Remove from data array
+    const index = crewMembers.findIndex(crew => crew.id === crewId);
+    if (index > -1) {
+        crewMembers.splice(index, 1);
+    }
+
+    // Remove from DOM
+    const crewRow = document.querySelector(`[data-crew-id="${crewId}"]`);
+    if (crewRow) {
+        crewRow.remove();
+    }
+
+    // Renumber all remaining crew
+    renumberCrew();
+}
+
+function renumberCrew() {
+    const sortedCrew = crewMembers.sort((a, b) => a.id - b.id);
+    sortedCrew.forEach((crew, index) => {
+        const crewRow = document.querySelector(`[data-crew-id="${crew.id}"]`);
+        if (crewRow) {
+            const label = crewRow.querySelector('.crew-label');
+            label.textContent = `Crew Member ${index + 1}`;
+        }
+    });
+}
+
+function updateCrewData(crewId, field, value) {
+    const crew = crewMembers.find(c => c.id === crewId);
+    if (crew) {
+        crew[field] = value;
+    }
+}
+
+function validateDailyRate(input, crewId) {
+    const cursorPosition = input.selectionStart;
+    const oldValue = input.value;
+    let value = oldValue;
+
+    // Allow only numbers and one decimal point
+    value = value.replace(/[^\d.]/g, '');
+
+    // Prevent multiple decimal points
+    const decimalCount = (value.match(/\./g) || []).length;
+    if (decimalCount > 1) {
+        const firstDecimalIndex = value.indexOf('.');
+        value = value.substring(0, firstDecimalIndex + 1) +
+                value.substring(firstDecimalIndex + 1).replace(/\./g, '');
+    }
+
+    // Limit to two decimal places
+    const decimalIndex = value.indexOf('.');
+    if (decimalIndex !== -1 && value.length > decimalIndex + 3) {
+        value = value.substring(0, decimalIndex + 3);
+    }
+
+    // Only update if value changed
+    if (value !== oldValue) {
+        input.value = value;
+        const diff = oldValue.length - value.length;
+        input.setSelectionRange(cursorPosition - diff, cursorPosition - diff);
+    }
+
+    // Update crew data
+    updateCrewData(crewId, 'dailyRate', value);
+
+    input.classList.remove('error');
+}
+
+// Helper function to get all crew data
+function getAllCrewData() {
+    return crewMembers.map(crew => ({
+        role: crew.role,
+        dailyRate: parseFloat(crew.dailyRate) || 0
+    }));
 }
