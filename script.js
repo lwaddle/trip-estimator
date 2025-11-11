@@ -321,6 +321,9 @@ function validateFuelPrice(input) {
     }
 
     input.classList.remove('error');
+
+    // Update trip estimate since fuel price affects fuel subtotal
+    updateTripEstimate();
 }
 
 function validateApuFuelBurn(input) {
@@ -333,6 +336,7 @@ function validateApuFuelBurn(input) {
     if (value === '') {
         input.value = '';
         input.classList.remove('error');
+        updateTripEstimate();
         return;
     }
 
@@ -346,6 +350,9 @@ function validateApuFuelBurn(input) {
 
     input.value = apuFuelBurn;
     input.classList.remove('error');
+
+    // Update trip estimate since APU fuel burn affects fuel subtotal
+    updateTripEstimate();
 }
 
 // Helper function to get fuel parameters
@@ -395,6 +402,9 @@ function updateSummary() {
     document.getElementById('totalFlightTime').textContent = formattedTime;
     document.getElementById('totalFuelLbs').textContent = totalFuelLbs.toLocaleString();
     document.getElementById('totalGallons').textContent = totalGallons.toFixed(2);
+
+    // Update trip estimate
+    updateTripEstimate();
 }
 
 // Crew Role Management
@@ -413,6 +423,9 @@ function addCrewRole() {
     const crewContainer = document.getElementById('crewContainer');
     const crewRow = createCrewRow(crewData);
     crewContainer.appendChild(crewRow);
+
+    // Update trip estimate since crew count affects calculations
+    updateTripEstimate();
 }
 
 function createCrewRow(crewData) {
@@ -475,6 +488,9 @@ function removeCrewRole(crewId) {
 
     // Renumber all remaining crew
     renumberCrew();
+
+    // Update trip estimate since crew count affects calculations
+    updateTripEstimate();
 }
 
 function renumberCrew() {
@@ -492,6 +508,7 @@ function updateCrewData(crewId, field, value) {
     const crew = crewMembers.find(c => c.id === crewId);
     if (crew) {
         crew[field] = value;
+        updateTripEstimate();
     }
 }
 
@@ -549,6 +566,7 @@ function validateTripDays(input) {
     if (value === '') {
         input.value = '';
         input.classList.remove('error');
+        updateTripEstimate();
         return;
     }
 
@@ -562,6 +580,7 @@ function validateTripDays(input) {
 
     input.value = tripDays;
     input.classList.remove('error');
+    updateTripEstimate();
 }
 
 function validateHotelStays(input) {
@@ -574,6 +593,7 @@ function validateHotelStays(input) {
     if (value === '') {
         input.value = '';
         input.classList.remove('error');
+        updateTripEstimate();
         return;
     }
 
@@ -587,6 +607,7 @@ function validateHotelStays(input) {
 
     input.value = hotelStays;
     input.classList.remove('error');
+    updateTripEstimate();
 }
 
 function validateExpenseAmount(input) {
@@ -619,6 +640,7 @@ function validateExpenseAmount(input) {
     }
 
     input.classList.remove('error');
+    updateTripEstimate();
 }
 
 // Helper function to get crew expenses
@@ -666,6 +688,7 @@ function validateHourlyRate(input) {
     }
 
     input.classList.remove('error');
+    updateTripEstimate();
 }
 
 // Helper function to get hourly programs
@@ -708,6 +731,7 @@ function validateAirportGroundCost(input) {
     }
 
     input.classList.remove('error');
+    updateTripEstimate();
 }
 
 // Helper function to get airport & ground costs
@@ -757,6 +781,7 @@ function validateMiscellaneousCost(input) {
     }
 
     input.classList.remove('error');
+    updateTripEstimate();
 }
 
 // Helper function to get miscellaneous costs
@@ -770,4 +795,95 @@ function getMiscellaneousCosts() {
 // Helper function to get trip notes
 function getTripNotes() {
     return document.getElementById('tripNotes').value;
+}
+
+// Calculate and update trip estimate
+function updateTripEstimate() {
+    // Calculate total flight time in hours (as decimal)
+    let totalMinutes = 0;
+    legs.forEach(leg => {
+        const hours = parseInt(leg.hours, 10) || 0;
+        const minutes = parseInt(leg.minutes, 10) || 0;
+        totalMinutes += (hours * 60) + minutes;
+    });
+    const totalFlightHours = totalMinutes / 60;
+
+    // Get fuel parameters
+    const fuelParams = getFuelParameters();
+    const fuelDensity = fuelParams.fuelDensity;
+    const fuelPrice = fuelParams.fuelPrice;
+    const apuFuelBurn = fuelParams.apuFuelBurn;
+
+    // Calculate total fuel in lbs
+    let totalFuelLbs = 0;
+    legs.forEach(leg => {
+        totalFuelLbs += parseInt(leg.fuelBurn, 10) || 0;
+    });
+
+    // Calculate total gallons
+    const totalGallons = fuelDensity > 0 ? (totalFuelLbs / fuelDensity) : 0;
+
+    // Get hourly programs
+    const hourlyPrograms = getHourlyPrograms();
+    const hourlyRate = hourlyPrograms.maintenancePrograms + hourlyPrograms.engineApu + hourlyPrograms.additional;
+
+    // 1. Hourly Subtotal = Total Flight Hours × Hourly Rate
+    const hourlySubtotal = totalFlightHours * hourlyRate;
+
+    // 2. Fuel Subtotal = (Total Gallons × Fuel Price) + (Number of Legs × APU Fuel Burn / Fuel Density × Fuel Price)
+    const numLegs = legs.length;
+    const apuFuelCost = numLegs * (apuFuelBurn / fuelDensity) * fuelPrice;
+    const fuelSubtotal = (totalGallons * fuelPrice) + apuFuelCost;
+
+    // Get crew expenses data
+    const crewExpensesData = getCrewExpenses();
+    const tripDays = crewExpensesData.tripDays;
+    const hotelStays = crewExpensesData.hotelStays;
+    const hotelRate = crewExpensesData.hotelRate;
+    const mealsRate = crewExpensesData.mealsRate;
+    const otherRate = crewExpensesData.otherRate;
+    const rentalCar = crewExpensesData.rentalCar;
+    const airfare = crewExpensesData.airfare;
+    const mileage = crewExpensesData.mileage;
+
+    // Get number of crew members
+    const numCrewMembers = crewMembers.length;
+
+    // 3. Crew Service (day rates) = Sum of (Daily Rate × Trip Days) for each crew member
+    let crewService = 0;
+    crewMembers.forEach(crew => {
+        const dailyRate = parseFloat(crew.dailyRate) || 0;
+        crewService += dailyRate * tripDays;
+    });
+
+    // 4. Crew Expenses = (Num Crew × Hotel Rate × Hotel Stays) + (Num Crew × Meals Rate × Trip Days) + (Num Crew × Other Rate × Trip Days) + Rental Car + Airfare + Mileage
+    const crewExpensesTotal =
+        (numCrewMembers * hotelRate * hotelStays) +
+        (numCrewMembers * mealsRate * tripDays) +
+        (numCrewMembers * otherRate * tripDays) +
+        rentalCar + airfare + mileage;
+
+    // 5. Crew Subtotal = Crew Service + Crew Expenses
+    const crewSubtotal = crewService + crewExpensesTotal;
+
+    // 6. Airport & Ground Subtotal = Sum of all Airport & Ground Costs
+    const airportGroundCosts = getAirportGroundCosts();
+    const airportGroundSubtotal = Object.values(airportGroundCosts).reduce((sum, cost) => sum + cost, 0);
+
+    // 7. Miscellaneous Subtotal = Sum of all Miscellaneous costs
+    const miscCosts = getMiscellaneousCosts();
+    const miscellaneousSubtotal = miscCosts.tripCoordinationFee + miscCosts.otherMiscellaneous;
+
+    // 8. Estimated Total = Sum of all subtotals
+    const estimatedTotal = hourlySubtotal + fuelSubtotal + crewSubtotal + airportGroundSubtotal + miscellaneousSubtotal;
+
+    // Update the display
+    document.getElementById('hourlySubtotal').textContent = `$${hourlySubtotal.toFixed(2)}`;
+    document.getElementById('fuelSubtotal').textContent = `$${fuelSubtotal.toFixed(2)}`;
+    document.getElementById('crewService').textContent = `$${crewService.toFixed(2)}`;
+    document.getElementById('crewExpensesTotal').textContent = `$${crewExpensesTotal.toFixed(2)}`;
+    document.getElementById('crewSubtotal').textContent = `$${crewSubtotal.toFixed(2)}`;
+    document.getElementById('airportGroundSubtotal').textContent = `$${airportGroundSubtotal.toFixed(2)}`;
+    document.getElementById('miscellaneousSubtotal').textContent = `$${miscellaneousSubtotal.toFixed(2)}`;
+    document.getElementById('estimatedTotal').textContent = `$${estimatedTotal.toFixed(2)}`;
 }
