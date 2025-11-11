@@ -970,29 +970,20 @@ function updateTripEstimate() {
     // 8. Estimated Total = Sum of all subtotals
     const estimatedTotal = hourlySubtotal + fuelSubtotal + crewSubtotal + airportGroundSubtotal + miscellaneousSubtotal;
 
-    // Update the display
-    document.getElementById('hourlySubtotal').textContent = `$${hourlySubtotal.toFixed(2)}`;
-    document.getElementById('fuelSubtotal').textContent = `$${fuelSubtotal.toFixed(2)}`;
-    document.getElementById('crewService').textContent = `$${crewService.toFixed(2)}`;
-    document.getElementById('crewExpensesTotal').textContent = `$${crewExpensesTotal.toFixed(2)}`;
-    document.getElementById('crewSubtotal').textContent = `$${crewSubtotal.toFixed(2)}`;
-    document.getElementById('airportGroundSubtotal').textContent = `$${airportGroundSubtotal.toFixed(2)}`;
-    document.getElementById('miscellaneousSubtotal').textContent = `$${miscellaneousSubtotal.toFixed(2)}`;
-    document.getElementById('estimatedTotal').textContent = `$${estimatedTotal.toFixed(2)}`;
-
-    // Update summary text if it's visible
-    updateSummaryText();
+    // Update the estimate text display
+    updateEstimateDisplay();
 }
 
 // Initialize Summary Feature
 function initializeSummaryFeature() {
-    const copySummaryBtn = document.getElementById('copySummaryBtn');
+    const copyBtn = document.getElementById('copyBtn');
     const resetBtn = document.getElementById('resetBtn');
-    const closeSummaryBtn = document.getElementById('closeSummaryBtn');
 
-    copySummaryBtn.addEventListener('click', handleCopySummary);
+    copyBtn.addEventListener('click', handleCopy);
     resetBtn.addEventListener('click', handleReset);
-    closeSummaryBtn.addEventListener('click', handleCloseSummary);
+
+    // Initial estimate display
+    updateEstimateDisplay();
 }
 
 // Generate Summary Text
@@ -1224,50 +1215,30 @@ function generateSummaryText() {
     return summary;
 }
 
-// Update Summary Text (called when form changes)
-function updateSummaryText() {
-    const summarySection = document.getElementById('summaryTextSection');
-    if (summarySection.style.display !== 'none') {
-        const summaryTextArea = document.getElementById('summaryTextArea');
-        summaryTextArea.value = generateSummaryText();
-    }
+// Update Estimate Display (called when form changes)
+function updateEstimateDisplay() {
+    const estimateText = document.getElementById('estimateText');
+    estimateText.textContent = generateSummaryText();
 }
 
-// Handle Copy Summary Button Click
-function handleCopySummary() {
+// Handle Copy Button Click
+function handleCopy() {
     const summaryText = generateSummaryText();
-    const summaryTextArea = document.getElementById('summaryTextArea');
-    const summarySection = document.getElementById('summaryTextSection');
-
-    // Update textarea and show section
-    summaryTextArea.value = summaryText;
-    summarySection.style.display = 'block';
 
     // Copy to clipboard
     navigator.clipboard.writeText(summaryText).then(() => {
         // Show success feedback
-        const btn = document.getElementById('copySummaryBtn');
+        const btn = document.getElementById('copyBtn');
         const originalText = btn.textContent;
         btn.textContent = 'Copied!';
-        btn.style.backgroundColor = '#27ae60';
 
         setTimeout(() => {
             btn.textContent = originalText;
-            btn.style.backgroundColor = '';
         }, 2000);
-
-        // Scroll to summary section
-        summarySection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }).catch(err => {
         console.error('Failed to copy text: ', err);
         alert('Failed to copy to clipboard. Please try again.');
     });
-}
-
-// Handle Close Summary Button Click
-function handleCloseSummary() {
-    const summarySection = document.getElementById('summaryTextSection');
-    summarySection.style.display = 'none';
 }
 
 // Handle Reset Button Click
@@ -1320,9 +1291,6 @@ function handleReset() {
         document.getElementById('otherMiscellaneous').value = '0.00';
 
         document.getElementById('tripNotes').value = '';
-
-        // Hide summary section
-        handleCloseSummary();
 
         // Re-add default leg and crew members
         addLeg();
