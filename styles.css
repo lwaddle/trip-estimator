@@ -1,0 +1,204 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    color: #2c3e50;
+    margin-bottom: 30px;
+    font-size: 28px;
+}
+
+h2 {
+    color: #34495e;
+    font-size: 20px;
+}
+
+.flight-legs-section {
+    margin-bottom: 30px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.btn-primary {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+}
+
+.btn-delete {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.btn-delete:hover {
+    background-color: #c0392b;
+}
+
+#legsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.leg-row {
+    border: 1px solid #dfe6e9;
+    border-radius: 6px;
+    padding: 15px;
+    background-color: #fafbfc;
+}
+
+.leg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.leg-label {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 16px;
+}
+
+.leg-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 15px;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.field-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #636e72;
+    margin-bottom: 5px;
+}
+
+.field-group input {
+    padding: 10px;
+    border: 1px solid #dfe6e9;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.field-group input:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.field-group input.error {
+    border-color: #e74c3c;
+}
+
+.time-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.time-inputs input {
+    flex: 1;
+    text-align: center;
+}
+
+.time-separator {
+    font-weight: bold;
+    color: #636e72;
+    font-size: 18px;
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+    }
+
+    h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-primary {
+        width: 100%;
+    }
+
+    .leg-fields {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    /* Group From/To together and Flight Time/Fuel Burn together */
+    .leg-fields .field-group:nth-child(1),
+    .leg-fields .field-group:nth-child(2) {
+        order: 1;
+    }
+
+    .leg-fields .field-group:nth-child(3),
+    .leg-fields .field-group:nth-child(4) {
+        order: 2;
+    }
+}
+
+/* Tablet styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .leg-fields {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+}
