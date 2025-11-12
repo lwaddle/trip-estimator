@@ -1777,19 +1777,46 @@ function initializeSaveLoad() {
     });
 
     // Export current state without saving
-    exportCurrentBtn.addEventListener('click', () => {
+    exportCurrentBtn.addEventListener('click', async () => {
         const state = getCurrentEstimateState();
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
         const filename = `trip-estimate-${timestamp}.json`;
 
         const dataStr = JSON.stringify({
-            version: STORAGE_VERSION,
+            version: '1.0',
             name: 'Unsaved Estimate',
             data: state,
             timestamp: Date.now()
         }, null, 2);
 
         const blob = new Blob([dataStr], { type: 'application/json' });
+
+        // Try Web Share API first (mobile-friendly)
+        if (navigator.canShare && navigator.share) {
+            const file = new File([blob], filename, { type: 'application/json' });
+
+            // Check if we can share files
+            if (navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Trip Estimate',
+                        text: 'Trip estimate export'
+                    });
+
+                    saveModal.classList.remove('active');
+                    setTimeout(resetSaveModal, 300);
+                    return;
+                } catch (err) {
+                    // User cancelled or share failed, fall through to download
+                    if (err.name !== 'AbortError') {
+                        console.log('Share failed:', err);
+                    }
+                }
+            }
+        }
+
+        // Fallback to traditional download
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1922,7 +1949,7 @@ function formatEstimateDate(date) {
 }
 
 // Export estimate to JSON file
-function exportEstimate(estimateId) {
+async function exportEstimate(estimateId) {
     let estimate;
 
     if (estimateId === 'current') {
@@ -1959,8 +1986,40 @@ function exportEstimate(estimateId) {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '') + '.json';
 
-    // Create blob and download
+    // Create blob
     const blob = new Blob([JSON.stringify(estimate, null, 2)], { type: 'application/json' });
+
+    // Try Web Share API first (mobile-friendly)
+    if (navigator.canShare && navigator.share) {
+        const file = new File([blob], filename, { type: 'application/json' });
+
+        // Check if we can share files
+        if (navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: estimate.name,
+                    text: 'Trip estimate export'
+                });
+
+                // Show success message
+                const indicator = document.getElementById('autoSaveIndicator');
+                indicator.textContent = '✓ Shared!';
+                indicator.classList.add('visible');
+                setTimeout(() => {
+                    indicator.classList.remove('visible');
+                }, 2000);
+                return;
+            } catch (err) {
+                // User cancelled or share failed, fall through to download
+                if (err.name !== 'AbortError') {
+                    console.log('Share failed:', err);
+                }
+            }
+        }
+    }
+
+    // Fallback to traditional download
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
