@@ -1586,7 +1586,10 @@ function saveEstimate(name, isAutoSave = false) {
         // Sort by timestamp (newest first)
         estimates.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-        return saveEstimatesToStorage(estimates);
+        if (saveEstimatesToStorage(estimates)) {
+            return estimate.id; // Return the ID for export
+        }
+        return false;
     }
 }
 
@@ -1659,10 +1662,31 @@ function initializeSaveLoad() {
     const cancelLoadBtn = document.getElementById('cancelLoadBtn');
     const importBtn = document.getElementById('importBtn');
     const estimateNameInput = document.getElementById('estimateName');
+    const exportSavedBtn = document.getElementById('exportSavedBtn');
+    const saveAnotherBtn = document.getElementById('saveAnotherBtn');
+    const exportCurrentBtn = document.getElementById('exportCurrentBtn');
+    const closeSaveModalBtn = document.getElementById('closeSaveModalBtn');
+    const saveFormView = document.getElementById('saveFormView');
+    const saveSuccessView = document.getElementById('saveSuccessView');
+    const saveFormButtons = document.getElementById('saveFormButtons');
+    const saveSuccessButtons = document.getElementById('saveSuccessButtons');
+    const savedEstimateName = document.getElementById('savedEstimateName');
+
+    // Track the last saved estimate ID for export
+    let lastSavedEstimateId = null;
+
+    // Reset save modal to form view
+    const resetSaveModal = () => {
+        saveFormView.style.display = 'block';
+        saveSuccessView.style.display = 'none';
+        saveFormButtons.style.display = 'flex';
+        saveSuccessButtons.style.display = 'none';
+        estimateNameInput.value = '';
+    };
 
     // Open save modal
     saveBtn.addEventListener('click', () => {
-        estimateNameInput.value = '';
+        resetSaveModal();
         saveModal.classList.add('active');
         setTimeout(() => estimateNameInput.focus(), 100);
     });
@@ -1676,6 +1700,7 @@ function initializeSaveLoad() {
     // Close modals
     saveModalClose.addEventListener('click', () => {
         saveModal.classList.remove('active');
+        setTimeout(resetSaveModal, 300); // Reset after animation
     });
 
     loadModalClose.addEventListener('click', () => {
@@ -1684,6 +1709,7 @@ function initializeSaveLoad() {
 
     cancelSaveBtn.addEventListener('click', () => {
         saveModal.classList.remove('active');
+        setTimeout(resetSaveModal, 300);
     });
 
     cancelLoadBtn.addEventListener('click', () => {
@@ -1699,6 +1725,7 @@ function initializeSaveLoad() {
     window.addEventListener('click', (e) => {
         if (e.target === saveModal) {
             saveModal.classList.remove('active');
+            setTimeout(resetSaveModal, 300);
         }
         if (e.target === loadModal) {
             loadModal.classList.remove('active');
@@ -1713,16 +1740,17 @@ function initializeSaveLoad() {
             return;
         }
 
-        if (saveEstimate(name, false)) {
-            saveModal.classList.remove('active');
+        const estimateId = saveEstimate(name, false);
+        if (estimateId) {
+            // Store the ID for export
+            lastSavedEstimateId = estimateId;
 
-            // Show success message
-            const indicator = document.getElementById('autoSaveIndicator');
-            indicator.textContent = '✓ Estimate saved!';
-            indicator.classList.add('visible');
-            setTimeout(() => {
-                indicator.classList.remove('visible');
-            }, 2000);
+            // Show success view
+            savedEstimateName.textContent = name;
+            saveFormView.style.display = 'none';
+            saveSuccessView.style.display = 'block';
+            saveFormButtons.style.display = 'none';
+            saveSuccessButtons.style.display = 'flex';
         }
     };
 
@@ -1733,6 +1761,50 @@ function initializeSaveLoad() {
         if (e.key === 'Enter') {
             doSave();
         }
+    });
+
+    // Export the saved estimate
+    exportSavedBtn.addEventListener('click', () => {
+        if (lastSavedEstimateId) {
+            exportEstimate(lastSavedEstimateId);
+        }
+    });
+
+    // Save another estimate
+    saveAnotherBtn.addEventListener('click', () => {
+        resetSaveModal();
+        setTimeout(() => estimateNameInput.focus(), 100);
+    });
+
+    // Export current state without saving
+    exportCurrentBtn.addEventListener('click', () => {
+        const state = getCurrentEstimateState();
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const filename = `trip-estimate-${timestamp}.json`;
+
+        const dataStr = JSON.stringify({
+            version: STORAGE_VERSION,
+            name: 'Unsaved Estimate',
+            data: state,
+            timestamp: Date.now()
+        }, null, 2);
+
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        saveModal.classList.remove('active');
+        setTimeout(resetSaveModal, 300);
+    });
+
+    // Close save modal from success view
+    closeSaveModalBtn.addEventListener('click', () => {
+        saveModal.classList.remove('active');
+        setTimeout(resetSaveModal, 300);
     });
 
     // Clean up old estimates on init

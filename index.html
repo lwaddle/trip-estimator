@@ -422,12 +422,31 @@
                 <span class="modal-close" id="saveModalClose">&times;</span>
             </div>
             <div class="modal-body">
-                <label for="estimateName">Estimate Name:</label>
-                <input type="text" id="estimateName" placeholder="e.g., Miami to Denver - Jan 15" autofocus>
+                <div id="saveFormView">
+                    <label for="estimateName">Estimate Name:</label>
+                    <input type="text" id="estimateName" placeholder="e.g., Miami to Denver - Jan 15" autofocus>
+                </div>
+                <div id="saveSuccessView" style="display: none;">
+                    <div class="save-success-message">
+                        <div class="success-icon">✓</div>
+                        <h4 id="savedEstimateName"></h4>
+                        <p>Estimate saved successfully!</p>
+                    </div>
+                    <div class="save-options">
+                        <button id="exportSavedBtn" class="btn-action btn-primary">Export to File</button>
+                        <button id="saveAnotherBtn" class="btn-action btn-secondary">Save Another</button>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
-                <button id="saveEstimateBtn" class="btn-action btn-primary">Save</button>
-                <button id="cancelSaveBtn" class="btn-action btn-secondary">Cancel</button>
+                <div id="saveFormButtons">
+                    <button id="exportCurrentBtn" class="btn-action btn-secondary">Export Without Saving</button>
+                    <button id="saveEstimateBtn" class="btn-action btn-primary">Save</button>
+                    <button id="cancelSaveBtn" class="btn-action btn-secondary">Cancel</button>
+                </div>
+                <div id="saveSuccessButtons" style="display: none;">
+                    <button id="closeSaveModalBtn" class="btn-action btn-secondary">Close</button>
+                </div>
             </div>
         </div>
     </div>
