@@ -356,7 +356,7 @@ h2 {
     color: #27ae60;
 }
 
-#tripDays.needs-attention {
+input.needs-attention {
     background-color: #fff3cd;
     border-color: #ffc107;
 }

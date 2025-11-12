@@ -700,6 +700,7 @@ function validateHotelStays(input) {
         input.value = '';
         input.classList.remove('error');
         updateTripEstimate();
+        validateHotelFields();
         return;
     }
 
@@ -714,6 +715,7 @@ function validateHotelStays(input) {
     input.value = hotelStays;
     input.classList.remove('error');
     updateTripEstimate();
+    validateHotelFields();
 }
 
 function validateExpenseAmount(input) {
@@ -747,6 +749,33 @@ function validateExpenseAmount(input) {
 
     input.classList.remove('error');
     updateTripEstimate();
+
+    // Check if this is the hotelRate input
+    if (input.id === 'hotelRate') {
+        validateHotelFields();
+    }
+}
+
+// Cross-validation for hotel stays and hotel rate
+function validateHotelFields() {
+    const hotelStaysInput = document.getElementById('hotelStays');
+    const hotelRateInput = document.getElementById('hotelRate');
+
+    const hotelStays = parseInt(hotelStaysInput.value, 10) || 0;
+    const hotelRate = parseFloat(hotelRateInput.value) || 0;
+
+    // If one is set but the other is 0, add visual indicator
+    if (hotelStays > 0 && hotelRate === 0) {
+        hotelRateInput.classList.add('needs-attention');
+    } else {
+        hotelRateInput.classList.remove('needs-attention');
+    }
+
+    if (hotelRate > 0 && hotelStays === 0) {
+        hotelStaysInput.classList.add('needs-attention');
+    } else {
+        hotelStaysInput.classList.remove('needs-attention');
+    }
 }
 
 // Helper function to get crew expenses
