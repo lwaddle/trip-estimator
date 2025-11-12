@@ -978,9 +978,13 @@ function updateTripEstimate() {
 function initializeSummaryFeature() {
     const copyBtn = document.getElementById('copyBtn');
     const resetBtn = document.getElementById('resetBtn');
+    const tripNotesTextarea = document.getElementById('tripNotes');
 
     copyBtn.addEventListener('click', handleCopy);
     resetBtn.addEventListener('click', handleReset);
+
+    // Add listener for trip notes textarea to update estimate display
+    tripNotesTextarea.addEventListener('input', updateEstimateDisplay);
 
     // Initial estimate display
     updateEstimateDisplay();
@@ -1000,9 +1004,14 @@ function generateSummaryText() {
         const minutes = parseInt(leg.minutes, 10) || 0;
         const fuelBurn = parseInt(leg.fuelBurn, 10) || 0;
 
-        // Calculate gallons for this leg (includes APU fuel)
+        // Check if this leg has any actual data
+        const hasFuelBurn = fuelBurn > 0;
+        const hasFlightTime = hours > 0 || minutes > 0;
+        const isActiveLeg = hasFuelBurn || hasFlightTime;
+
+        // Calculate gallons for this leg (includes APU fuel only for active legs)
         const fuelParams = getFuelParameters();
-        const apuFuelBurn = fuelParams.apuFuelBurn;
+        const apuFuelBurn = isActiveLeg ? fuelParams.apuFuelBurn : 0;
         const fuelDensity = fuelParams.fuelDensity;
         const totalLegFuelLbs = fuelBurn + apuFuelBurn;
         const legGallons = fuelDensity > 0 ? (totalLegFuelLbs / fuelDensity) : 0;
