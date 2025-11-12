@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => e.target.select(), 0);
         }
     });
+
+    // Initialize summary and action buttons
+    initializeSummaryFeature();
 });
 
 function addLeg() {
@@ -967,13 +970,344 @@ function updateTripEstimate() {
     // 8. Estimated Total = Sum of all subtotals
     const estimatedTotal = hourlySubtotal + fuelSubtotal + crewSubtotal + airportGroundSubtotal + miscellaneousSubtotal;
 
-    // Update the display
-    document.getElementById('hourlySubtotal').textContent = `$${hourlySubtotal.toFixed(2)}`;
-    document.getElementById('fuelSubtotal').textContent = `$${fuelSubtotal.toFixed(2)}`;
-    document.getElementById('crewService').textContent = `$${crewService.toFixed(2)}`;
-    document.getElementById('crewExpensesTotal').textContent = `$${crewExpensesTotal.toFixed(2)}`;
-    document.getElementById('crewSubtotal').textContent = `$${crewSubtotal.toFixed(2)}`;
-    document.getElementById('airportGroundSubtotal').textContent = `$${airportGroundSubtotal.toFixed(2)}`;
-    document.getElementById('miscellaneousSubtotal').textContent = `$${miscellaneousSubtotal.toFixed(2)}`;
-    document.getElementById('estimatedTotal').textContent = `$${estimatedTotal.toFixed(2)}`;
+    // Update the estimate text display
+    updateEstimateDisplay();
+}
+
+// Initialize Summary Feature
+function initializeSummaryFeature() {
+    const copyBtn = document.getElementById('copyBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const tripNotesTextarea = document.getElementById('tripNotes');
+
+    copyBtn.addEventListener('click', handleCopy);
+    resetBtn.addEventListener('click', handleReset);
+
+    // Add listener for trip notes textarea to update estimate display
+    tripNotesTextarea.addEventListener('input', updateEstimateDisplay);
+
+    // Initial estimate display
+    updateEstimateDisplay();
+}
+
+// Generate Summary Text
+function generateSummaryText() {
+    let summary = '';
+
+    // LEGS SUMMARY
+    summary += 'LEGS SUMMARY\n';
+    const sortedLegs = legs.sort((a, b) => a.id - b.id);
+    sortedLegs.forEach((leg, index) => {
+        const from = leg.from || '';
+        const to = leg.to || '';
+        const hours = parseInt(leg.hours, 10) || 0;
+        const minutes = parseInt(leg.minutes, 10) || 0;
+        const fuelBurn = parseInt(leg.fuelBurn, 10) || 0;
+
+        // Check if this leg has any actual data
+        const hasFuelBurn = fuelBurn > 0;
+        const hasFlightTime = hours > 0 || minutes > 0;
+        const isActiveLeg = hasFuelBurn || hasFlightTime;
+
+        // Calculate gallons for this leg (includes APU fuel only for active legs)
+        const fuelParams = getFuelParameters();
+        const apuFuelBurn = isActiveLeg ? fuelParams.apuFuelBurn : 0;
+        const fuelDensity = fuelParams.fuelDensity;
+        const totalLegFuelLbs = fuelBurn + apuFuelBurn;
+        const legGallons = fuelDensity > 0 ? (totalLegFuelLbs / fuelDensity) : 0;
+
+        const timeStr = `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+        summary += `Leg ${index + 1}: ${from} - ${to} ${timeStr} (${Math.round(legGallons)} gallons)\n`;
+    });
+
+    // Total Flight Time
+    let totalMinutes = 0;
+    legs.forEach(leg => {
+        const hours = parseInt(leg.hours, 10) || 0;
+        const minutes = parseInt(leg.minutes, 10) || 0;
+        totalMinutes += (hours * 60) + minutes;
+    });
+    const totalHours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+    const totalTimeStr = `${totalHours}h ${remainingMinutes.toString().padStart(2, '0')}m`;
+
+    // Total Fuel Used
+    let totalFuelLbs = 0;
+    legs.forEach(leg => {
+        totalFuelLbs += parseInt(leg.fuelBurn, 10) || 0;
+    });
+    const numLegs = legs.filter(leg => {
+        const hasFuelBurn = parseInt(leg.fuelBurn, 10) > 0;
+        const hasFlightTime = (parseInt(leg.hours, 10) || 0) > 0 || (parseInt(leg.minutes, 10) || 0) > 0;
+        return hasFuelBurn || hasFlightTime;
+    }).length;
+    const fuelParams = getFuelParameters();
+    const totalApuFuelLbs = numLegs * fuelParams.apuFuelBurn;
+    const totalFuelLbsWithApu = totalFuelLbs + totalApuFuelLbs;
+    const totalGallons = fuelParams.fuelDensity > 0 ? (totalFuelLbsWithApu / fuelParams.fuelDensity) : 0;
+
+    summary += `\nTotal Flight Time: ${totalTimeStr}\n`;
+    summary += `Total Fuel Used: ${Math.round(totalGallons)} gallons\n`;
+
+    // ESTIMATE
+    summary += '\n';
+    summary += 'ESTIMATE\n';
+
+    // Crew Day Rates
+    const crewExpensesData = getCrewExpenses();
+    const tripDays = crewExpensesData.tripDays;
+    crewMembers.forEach(crew => {
+        const role = crew.role;
+        const dailyRate = parseFloat(crew.dailyRate) || 0;
+        const total = dailyRate * tripDays;
+        if (total > 0) {
+            summary += `${role} ${tripDays} day(s) @ $${dailyRate.toFixed(2)}\n`;
+        }
+    });
+
+    // Crew Day Rate Subtotal
+    let crewService = 0;
+    crewMembers.forEach(crew => {
+        const dailyRate = parseFloat(crew.dailyRate) || 0;
+        crewService += dailyRate * tripDays;
+    });
+    summary += `Crew Day Rate Subtotal: $${crewService.toFixed(2)}\n`;
+
+    // Crew Expenses Breakdown
+    const numCrewMembers = crewMembers.length;
+    const hotelStays = crewExpensesData.hotelStays;
+    const hotelRate = crewExpensesData.hotelRate;
+    const mealsRate = crewExpensesData.mealsRate;
+    const otherRate = crewExpensesData.otherRate;
+    const rentalCar = crewExpensesData.rentalCar;
+    const airfare = crewExpensesData.airfare;
+    const mileage = crewExpensesData.mileage;
+
+    let crewExpensesLines = [];
+
+    const hotelTotal = numCrewMembers * hotelRate * hotelStays;
+    if (hotelTotal > 0) {
+        crewExpensesLines.push(`  Hotel: $${hotelTotal.toFixed(2)} (${numCrewMembers} crew × ${hotelStays} night(s) × $${hotelRate.toFixed(2)})`);
+    }
+
+    const mealsTotal = numCrewMembers * mealsRate * tripDays;
+    if (mealsTotal > 0) {
+        crewExpensesLines.push(`  Meals: $${mealsTotal.toFixed(2)} (${numCrewMembers} crew × ${tripDays} day(s) × $${mealsRate.toFixed(2)})`);
+    }
+
+    const otherTotal = numCrewMembers * otherRate * tripDays;
+    if (otherTotal > 0) {
+        crewExpensesLines.push(`  Other: $${otherTotal.toFixed(2)} (${numCrewMembers} crew × ${tripDays} day(s) × $${otherRate.toFixed(2)})`);
+    }
+
+    if (rentalCar > 0) {
+        crewExpensesLines.push(`  Rental Car: $${rentalCar.toFixed(2)}`);
+    }
+
+    if (airfare > 0) {
+        crewExpensesLines.push(`  Airfare: $${airfare.toFixed(2)}`);
+    }
+
+    if (mileage > 0) {
+        crewExpensesLines.push(`  Mileage: $${mileage.toFixed(2)}`);
+    }
+
+    const crewExpensesTotal = hotelTotal + mealsTotal + otherTotal + rentalCar + airfare + mileage;
+
+    if (crewExpensesLines.length > 0) {
+        summary += 'Crew Expenses:\n';
+        crewExpensesLines.forEach(line => summary += line + '\n');
+    }
+
+    const crewSubtotal = crewService + crewExpensesTotal;
+    summary += `Crew Subtotal: $${crewSubtotal.toFixed(2)}\n`;
+
+    // Hourly Subtotal
+    const totalFlightHours = totalMinutes / 60;
+    const hourlyPrograms = getHourlyPrograms();
+    const hourlyRate = hourlyPrograms.maintenancePrograms + hourlyPrograms.engineApu + hourlyPrograms.additional;
+    const hourlySubtotal = totalFlightHours * hourlyRate;
+
+    if (hourlySubtotal > 0) {
+        summary += `\n`;
+        summary += `Hourly Subtotal (Programs & Reserves): $${hourlySubtotal.toFixed(2)}\n`;
+        if (hourlyPrograms.maintenancePrograms > 0) {
+            summary += `  Maintenance Programs: $${(totalFlightHours * hourlyPrograms.maintenancePrograms).toFixed(2)} (${totalFlightHours.toFixed(2)} hrs × $${hourlyPrograms.maintenancePrograms.toFixed(2)})\n`;
+        }
+        if (hourlyPrograms.engineApu > 0) {
+            summary += `  Engine/APU: $${(totalFlightHours * hourlyPrograms.engineApu).toFixed(2)} (${totalFlightHours.toFixed(2)} hrs × $${hourlyPrograms.engineApu.toFixed(2)})\n`;
+        }
+        if (hourlyPrograms.additional > 0) {
+            summary += `  Additional: $${(totalFlightHours * hourlyPrograms.additional).toFixed(2)} (${totalFlightHours.toFixed(2)} hrs × $${hourlyPrograms.additional.toFixed(2)})\n`;
+        }
+    }
+
+    // Fuel Subtotal
+    const fuelPrice = fuelParams.fuelPrice;
+    const fuelSubtotal = totalGallons * fuelPrice;
+
+    if (fuelSubtotal > 0) {
+        summary += `Fuel Subtotal: $${fuelSubtotal.toFixed(2)}\n`;
+        summary += `  (${Math.round(totalGallons)} gallons @ $${fuelPrice.toFixed(2)})\n`;
+    }
+
+    // Airport & Ground Costs
+    const airportGroundCosts = getAirportGroundCosts();
+    const airportGroundLines = [];
+
+    if (airportGroundCosts.landingFees > 0) {
+        airportGroundLines.push(`  Landing Fees: $${airportGroundCosts.landingFees.toFixed(2)}`);
+    }
+    if (airportGroundCosts.catering > 0) {
+        airportGroundLines.push(`  Catering: $${airportGroundCosts.catering.toFixed(2)}`);
+    }
+    if (airportGroundCosts.handling > 0) {
+        airportGroundLines.push(`  Handling: $${airportGroundCosts.handling.toFixed(2)}`);
+    }
+    if (airportGroundCosts.passengerGroundTransport > 0) {
+        airportGroundLines.push(`  Passenger Ground Transport: $${airportGroundCosts.passengerGroundTransport.toFixed(2)}`);
+    }
+    if (airportGroundCosts.facilityFees > 0) {
+        airportGroundLines.push(`  Facility Fees: $${airportGroundCosts.facilityFees.toFixed(2)}`);
+    }
+    if (airportGroundCosts.specialEventFees > 0) {
+        airportGroundLines.push(`  Special Event Fees: $${airportGroundCosts.specialEventFees.toFixed(2)}`);
+    }
+    if (airportGroundCosts.rampParking > 0) {
+        airportGroundLines.push(`  Ramp/Parking: $${airportGroundCosts.rampParking.toFixed(2)}`);
+    }
+    if (airportGroundCosts.customs > 0) {
+        airportGroundLines.push(`  Customs: $${airportGroundCosts.customs.toFixed(2)}`);
+    }
+    if (airportGroundCosts.hangar > 0) {
+        airportGroundLines.push(`  Hangar: $${airportGroundCosts.hangar.toFixed(2)}`);
+    }
+    if (airportGroundCosts.otherAirportCosts > 0) {
+        airportGroundLines.push(`  Other: $${airportGroundCosts.otherAirportCosts.toFixed(2)}`);
+    }
+
+    const airportGroundSubtotal = Object.values(airportGroundCosts).reduce((sum, cost) => sum + cost, 0);
+
+    if (airportGroundLines.length > 0) {
+        summary += `Airport & Ground Subtotal: $${airportGroundSubtotal.toFixed(2)}\n`;
+        airportGroundLines.forEach(line => summary += line + '\n');
+    }
+
+    // Miscellaneous
+    const miscCosts = getMiscellaneousCosts();
+    const miscLines = [];
+
+    if (miscCosts.tripCoordinationFee > 0) {
+        miscLines.push(`  Trip Coordination Fee: $${miscCosts.tripCoordinationFee.toFixed(2)}`);
+    }
+    if (miscCosts.otherMiscellaneous > 0) {
+        miscLines.push(`  Other: $${miscCosts.otherMiscellaneous.toFixed(2)}`);
+    }
+
+    const miscellaneousSubtotal = miscCosts.tripCoordinationFee + miscCosts.otherMiscellaneous;
+
+    if (miscLines.length > 0) {
+        summary += `Miscellaneous Subtotal: $${miscellaneousSubtotal.toFixed(2)}\n`;
+        miscLines.forEach(line => summary += line + '\n');
+    }
+
+    // Estimated Total
+    const estimatedTotal = hourlySubtotal + fuelSubtotal + crewSubtotal + airportGroundSubtotal + miscellaneousSubtotal;
+    summary += `\nEstimated Total: $${estimatedTotal.toFixed(2)}\n`;
+
+    // Trip Notes
+    const tripNotes = getTripNotes();
+    if (tripNotes.trim()) {
+        summary += `\nTrip Notes:\n${tripNotes}`;
+    }
+
+    return summary;
+}
+
+// Update Estimate Display (called when form changes)
+function updateEstimateDisplay() {
+    const estimateText = document.getElementById('estimateText');
+    estimateText.textContent = generateSummaryText();
+}
+
+// Handle Copy Button Click
+function handleCopy() {
+    const summaryText = generateSummaryText();
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(summaryText).then(() => {
+        // Show success feedback
+        const btn = document.getElementById('copyBtn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy text: ', err);
+        alert('Failed to copy to clipboard. Please try again.');
+    });
+}
+
+// Handle Reset Button Click
+function handleReset() {
+    const confirmed = confirm('Are you sure you want to reset the entire form? All data will be lost.');
+
+    if (confirmed) {
+        // Clear legs array and reset counter
+        legs.length = 0;
+        legCount = 0;
+
+        // Clear crew members array and reset counter
+        crewMembers.length = 0;
+        crewCount = 0;
+
+        // Clear DOM containers
+        document.getElementById('legsContainer').innerHTML = '';
+        document.getElementById('crewContainer').innerHTML = '';
+
+        // Reset all input fields to their default values
+        document.getElementById('fuelDensity').value = '6.70';
+        document.getElementById('fuelPrice').value = '5.93';
+        document.getElementById('apuFuelBurn').value = '100';
+
+        document.getElementById('tripDays').value = '0';
+        document.getElementById('hotelStays').value = '0';
+        document.getElementById('hotelRate').value = '0.00';
+        document.getElementById('mealsRate').value = '0.00';
+        document.getElementById('otherRate').value = '0.00';
+        document.getElementById('rentalCar').value = '0.00';
+        document.getElementById('airfare').value = '0.00';
+        document.getElementById('mileage').value = '0.00';
+
+        document.getElementById('maintenancePrograms').value = '1048.00';
+        document.getElementById('engineApu').value = '0.00';
+        document.getElementById('additional').value = '0.00';
+
+        document.getElementById('landingFees').value = '0.00';
+        document.getElementById('catering').value = '0.00';
+        document.getElementById('handling').value = '0.00';
+        document.getElementById('passengerGroundTransport').value = '0.00';
+        document.getElementById('facilityFees').value = '0.00';
+        document.getElementById('specialEventFees').value = '0.00';
+        document.getElementById('rampParking').value = '0.00';
+        document.getElementById('customs').value = '0.00';
+        document.getElementById('hangar').value = '0.00';
+        document.getElementById('otherAirportCosts').value = '0.00';
+
+        document.getElementById('tripCoordinationFee').value = '0.00';
+        document.getElementById('otherMiscellaneous').value = '0.00';
+
+        document.getElementById('tripNotes').value = '';
+
+        // Re-add default leg and crew members
+        addLeg();
+        addCrewRole();
+        addCrewRole();
+
+        // Update all displays
+        updateSummary();
+        updateTripDaysHelper();
+    }
 }
