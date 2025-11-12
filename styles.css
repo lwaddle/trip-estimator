@@ -54,7 +54,7 @@ h2 {
 }
 
 .btn-primary {
-    background-color: #0ea5e9;
+    background-color: #64748b;
     color: white;
     border: none;
     padding: 10px 20px;
@@ -67,7 +67,7 @@ h2 {
 }
 
 .btn-primary:hover {
-    background-color: #0284c7;
+    background-color: #475569;
     transform: translateY(-1px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
@@ -153,8 +153,8 @@ h2 {
 .field-group input:focus,
 .field-group select:focus {
     outline: none;
-    border-color: #0ea5e9;
-    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+    border-color: #64748b;
+    box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.15);
 }
 
 .field-group input.error {
@@ -374,7 +374,7 @@ h2 {
 }
 
 .trip-days-helper.success {
-    color: #10b981;
+    color: #dc2626;
 }
 
 input.needs-attention {
@@ -453,8 +453,8 @@ input.needs-attention {
 
 .trip-notes-container textarea:focus {
     outline: none;
-    border-color: #0ea5e9;
-    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+    border-color: #64748b;
+    box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.15);
 }
 
 .trip-notes-container textarea::placeholder {
@@ -616,12 +616,12 @@ input.needs-attention {
 }
 
 .btn-action.btn-primary {
-    background-color: #10b981;
+    background-color: #dc2626;
     color: white;
 }
 
 .btn-action.btn-primary:hover {
-    background-color: #059669;
+    background-color: #b91c1c;
     transform: translateY(-2px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
@@ -734,7 +734,7 @@ input.needs-attention {
 
 .modal-body input[type="text"]:focus {
     outline: none;
-    border-color: #0ea5e9;
+    border-color: #64748b;
 }
 
 .modal-footer {
@@ -762,7 +762,7 @@ input.needs-attention {
 
 .success-icon {
     font-size: 48px;
-    color: #10b981;
+    color: #dc2626;
     margin-bottom: 10px;
 }
 
@@ -793,7 +793,7 @@ input.needs-attention {
 
 .estimate-item:hover {
     background-color: #f0f3f5;
-    border-color: #0ea5e9;
+    border-color: #64748b;
 }
 
 .estimate-info {
@@ -818,7 +818,7 @@ input.needs-attention {
 }
 
 .btn-export-estimate {
-    background-color: #0ea5e9;
+    background-color: #64748b;
     color: white;
     border: none;
     padding: 6px 12px;
@@ -829,7 +829,7 @@ input.needs-attention {
 }
 
 .btn-export-estimate:hover {
-    background-color: #0284c7;
+    background-color: #475569;
 }
 
 .btn-delete-estimate {
@@ -864,7 +864,7 @@ input.needs-attention {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background-color: #10b981;
+    background-color: #dc2626;
     color: white;
     padding: 10px 15px;
     border-radius: 6px;
