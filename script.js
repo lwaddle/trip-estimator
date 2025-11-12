@@ -680,7 +680,7 @@ function updateTripDaysHelper() {
             crewServiceTotal += dailyRate * tripDays;
         });
 
-        tripDaysHelper.textContent = `Crew service: $${crewServiceTotal.toFixed(2)} (${crewMembers.length} crew × ${tripDays} ${tripDays === 1 ? 'day' : 'days'})`;
+        tripDaysHelper.textContent = `Crew service: $${formatCurrency(crewServiceTotal)} (${crewMembers.length} crew × ${tripDays} ${tripDays === 1 ? 'day' : 'days'})`;
     } else {
         // Clear warning
         tripDaysInput.classList.remove('needs-attention');
@@ -996,6 +996,11 @@ function updateTripEstimate() {
     updateEstimateDisplay();
 }
 
+// Helper function to format currency with comma separators
+function formatCurrency(amount) {
+    return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 // Initialize Summary Feature
 function initializeSummaryFeature() {
     const copyBtn = document.getElementById('copyBtn');
@@ -1083,7 +1088,7 @@ function generateSummaryText() {
         const dailyRate = parseFloat(crew.dailyRate) || 0;
         const total = dailyRate * tripDays;
         if (total > 0) {
-            summary += `${role} ${tripDays} day(s) @ $${dailyRate.toFixed(2)}\n`;
+            summary += `${role} ${tripDays} day(s) @ $${formatCurrency(dailyRate)}\n`;
         }
     });
 
@@ -1093,7 +1098,7 @@ function generateSummaryText() {
         const dailyRate = parseFloat(crew.dailyRate) || 0;
         crewService += dailyRate * tripDays;
     });
-    summary += `Crew Day Rate Subtotal: $${crewService.toFixed(2)}\n`;
+    summary += `Crew Day Rate Subtotal: $${formatCurrency(crewService)}\n`;
 
     // Crew Expenses Breakdown
     const numCrewMembers = crewMembers.length;
@@ -1109,29 +1114,29 @@ function generateSummaryText() {
 
     const hotelTotal = numCrewMembers * hotelRate * hotelStays;
     if (hotelTotal > 0) {
-        crewExpensesLines.push(`  Hotel: $${hotelTotal.toFixed(2)} (${numCrewMembers} crew × ${hotelStays} night(s) × $${hotelRate.toFixed(2)})`);
+        crewExpensesLines.push(`  Hotel: $${formatCurrency(hotelTotal)} (${numCrewMembers} crew × ${hotelStays} night(s) × $${formatCurrency(hotelRate)})`);
     }
 
     const mealsTotal = numCrewMembers * mealsRate * tripDays;
     if (mealsTotal > 0) {
-        crewExpensesLines.push(`  Meals: $${mealsTotal.toFixed(2)} (${numCrewMembers} crew × ${tripDays} day(s) × $${mealsRate.toFixed(2)})`);
+        crewExpensesLines.push(`  Meals: $${formatCurrency(mealsTotal)} (${numCrewMembers} crew × ${tripDays} day(s) × $${formatCurrency(mealsRate)})`);
     }
 
     const otherTotal = numCrewMembers * otherRate * tripDays;
     if (otherTotal > 0) {
-        crewExpensesLines.push(`  Other: $${otherTotal.toFixed(2)} (${numCrewMembers} crew × ${tripDays} day(s) × $${otherRate.toFixed(2)})`);
+        crewExpensesLines.push(`  Other: $${formatCurrency(otherTotal)} (${numCrewMembers} crew × ${tripDays} day(s) × $${formatCurrency(otherRate)})`);
     }
 
     if (rentalCar > 0) {
-        crewExpensesLines.push(`  Rental Car: $${rentalCar.toFixed(2)}`);
+        crewExpensesLines.push(`  Rental Car: $${formatCurrency(rentalCar)}`);
     }
 
     if (airfare > 0) {
-        crewExpensesLines.push(`  Airfare: $${airfare.toFixed(2)}`);
+        crewExpensesLines.push(`  Airfare: $${formatCurrency(airfare)}`);
     }
 
     if (mileage > 0) {
-        crewExpensesLines.push(`  Mileage: $${mileage.toFixed(2)}`);
+        crewExpensesLines.push(`  Mileage: $${formatCurrency(mileage)}`);
     }
 
     const crewExpensesTotal = hotelTotal + mealsTotal + otherTotal + rentalCar + airfare + mileage;
@@ -1142,7 +1147,7 @@ function generateSummaryText() {
     }
 
     const crewSubtotal = crewService + crewExpensesTotal;
-    summary += `Crew Subtotal: $${crewSubtotal.toFixed(2)}\n`;
+    summary += `Crew Subtotal: $${formatCurrency(crewSubtotal)}\n`;
 
     // Hourly Subtotal
     const totalFlightHours = totalMinutes / 60;
@@ -1152,15 +1157,15 @@ function generateSummaryText() {
 
     if (hourlySubtotal > 0) {
         summary += `\n`;
-        summary += `Hourly Subtotal (Programs & Reserves): $${hourlySubtotal.toFixed(2)}\n`;
+        summary += `Hourly Subtotal (Programs & Reserves): $${formatCurrency(hourlySubtotal)}\n`;
         if (hourlyPrograms.maintenancePrograms > 0) {
-            summary += `  Maintenance Programs: $${(totalFlightHours * hourlyPrograms.maintenancePrograms).toFixed(2)} (${totalFlightHours.toFixed(2)} hrs × $${hourlyPrograms.maintenancePrograms.toFixed(2)})\n`;
+            summary += `  Maintenance Programs: $${formatCurrency(totalFlightHours * hourlyPrograms.maintenancePrograms)} (${totalFlightHours.toFixed(2)} hrs × $${formatCurrency(hourlyPrograms.maintenancePrograms)})\n`;
         }
         if (hourlyPrograms.otherConsumables > 0) {
-            summary += `  Other Consumables: $${(totalFlightHours * hourlyPrograms.otherConsumables).toFixed(2)} (${totalFlightHours.toFixed(2)} hrs × $${hourlyPrograms.otherConsumables.toFixed(2)})\n`;
+            summary += `  Other Consumables: $${formatCurrency(totalFlightHours * hourlyPrograms.otherConsumables)} (${totalFlightHours.toFixed(2)} hrs × $${formatCurrency(hourlyPrograms.otherConsumables)})\n`;
         }
         if (hourlyPrograms.additional > 0) {
-            summary += `  Additional: $${(totalFlightHours * hourlyPrograms.additional).toFixed(2)} (${totalFlightHours.toFixed(2)} hrs × $${hourlyPrograms.additional.toFixed(2)})\n`;
+            summary += `  Additional: $${formatCurrency(totalFlightHours * hourlyPrograms.additional)} (${totalFlightHours.toFixed(2)} hrs × $${formatCurrency(hourlyPrograms.additional)})\n`;
         }
     }
 
@@ -1169,8 +1174,8 @@ function generateSummaryText() {
     const fuelSubtotal = totalGallons * fuelPrice;
 
     if (fuelSubtotal > 0) {
-        summary += `Fuel Subtotal: $${fuelSubtotal.toFixed(2)}\n`;
-        summary += `  (${Math.round(totalGallons)} gallons @ $${fuelPrice.toFixed(2)})\n`;
+        summary += `Fuel Subtotal: $${formatCurrency(fuelSubtotal)}\n`;
+        summary += `  (${Math.round(totalGallons)} gallons @ $${formatCurrency(fuelPrice)})\n`;
     }
 
     // Airport & Ground Costs
@@ -1178,40 +1183,40 @@ function generateSummaryText() {
     const airportGroundLines = [];
 
     if (airportGroundCosts.landingFees > 0) {
-        airportGroundLines.push(`  Landing Fees: $${airportGroundCosts.landingFees.toFixed(2)}`);
+        airportGroundLines.push(`  Landing Fees: $${formatCurrency(airportGroundCosts.landingFees)}`);
     }
     if (airportGroundCosts.catering > 0) {
-        airportGroundLines.push(`  Catering: $${airportGroundCosts.catering.toFixed(2)}`);
+        airportGroundLines.push(`  Catering: $${formatCurrency(airportGroundCosts.catering)}`);
     }
     if (airportGroundCosts.handling > 0) {
-        airportGroundLines.push(`  Handling: $${airportGroundCosts.handling.toFixed(2)}`);
+        airportGroundLines.push(`  Handling: $${formatCurrency(airportGroundCosts.handling)}`);
     }
     if (airportGroundCosts.passengerGroundTransport > 0) {
-        airportGroundLines.push(`  Passenger Ground Transport: $${airportGroundCosts.passengerGroundTransport.toFixed(2)}`);
+        airportGroundLines.push(`  Passenger Ground Transport: $${formatCurrency(airportGroundCosts.passengerGroundTransport)}`);
     }
     if (airportGroundCosts.facilityFees > 0) {
-        airportGroundLines.push(`  Facility Fees: $${airportGroundCosts.facilityFees.toFixed(2)}`);
+        airportGroundLines.push(`  Facility Fees: $${formatCurrency(airportGroundCosts.facilityFees)}`);
     }
     if (airportGroundCosts.specialEventFees > 0) {
-        airportGroundLines.push(`  Special Event Fees: $${airportGroundCosts.specialEventFees.toFixed(2)}`);
+        airportGroundLines.push(`  Special Event Fees: $${formatCurrency(airportGroundCosts.specialEventFees)}`);
     }
     if (airportGroundCosts.rampParking > 0) {
-        airportGroundLines.push(`  Ramp/Parking: $${airportGroundCosts.rampParking.toFixed(2)}`);
+        airportGroundLines.push(`  Ramp/Parking: $${formatCurrency(airportGroundCosts.rampParking)}`);
     }
     if (airportGroundCosts.customs > 0) {
-        airportGroundLines.push(`  Customs: $${airportGroundCosts.customs.toFixed(2)}`);
+        airportGroundLines.push(`  Customs: $${formatCurrency(airportGroundCosts.customs)}`);
     }
     if (airportGroundCosts.hangar > 0) {
-        airportGroundLines.push(`  Hangar: $${airportGroundCosts.hangar.toFixed(2)}`);
+        airportGroundLines.push(`  Hangar: $${formatCurrency(airportGroundCosts.hangar)}`);
     }
     if (airportGroundCosts.otherAirportCosts > 0) {
-        airportGroundLines.push(`  Other: $${airportGroundCosts.otherAirportCosts.toFixed(2)}`);
+        airportGroundLines.push(`  Other: $${formatCurrency(airportGroundCosts.otherAirportCosts)}`);
     }
 
     const airportGroundSubtotal = Object.values(airportGroundCosts).reduce((sum, cost) => sum + cost, 0);
 
     if (airportGroundLines.length > 0) {
-        summary += `Airport & Ground Subtotal: $${airportGroundSubtotal.toFixed(2)}\n`;
+        summary += `Airport & Ground Subtotal: $${formatCurrency(airportGroundSubtotal)}\n`;
         airportGroundLines.forEach(line => summary += line + '\n');
     }
 
@@ -1220,22 +1225,22 @@ function generateSummaryText() {
     const miscLines = [];
 
     if (miscCosts.tripCoordinationFee > 0) {
-        miscLines.push(`  Trip Coordination Fee: $${miscCosts.tripCoordinationFee.toFixed(2)}`);
+        miscLines.push(`  Trip Coordination Fee: $${formatCurrency(miscCosts.tripCoordinationFee)}`);
     }
     if (miscCosts.otherMiscellaneous > 0) {
-        miscLines.push(`  Other: $${miscCosts.otherMiscellaneous.toFixed(2)}`);
+        miscLines.push(`  Other: $${formatCurrency(miscCosts.otherMiscellaneous)}`);
     }
 
     const miscellaneousSubtotal = miscCosts.tripCoordinationFee + miscCosts.otherMiscellaneous;
 
     if (miscLines.length > 0) {
-        summary += `Miscellaneous Subtotal: $${miscellaneousSubtotal.toFixed(2)}\n`;
+        summary += `Miscellaneous Subtotal: $${formatCurrency(miscellaneousSubtotal)}\n`;
         miscLines.forEach(line => summary += line + '\n');
     }
 
     // Estimated Total
     const estimatedTotal = hourlySubtotal + fuelSubtotal + crewSubtotal + airportGroundSubtotal + miscellaneousSubtotal;
-    summary += `\nEstimated Total: $${estimatedTotal.toFixed(2)}\n`;
+    summary += `\nEstimated Total: $${formatCurrency(estimatedTotal)}\n`;
 
     // Trip Notes
     const tripNotes = getTripNotes();
