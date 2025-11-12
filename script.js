@@ -35,11 +35,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle info icon clicks for mobile tooltip
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('info-icon')) {
+            e.preventDefault();
             e.stopPropagation();
-            // Toggle active state
-            e.target.classList.toggle('active');
+
+            // Check if on mobile/touch device
+            const isMobile = window.matchMedia('(max-width: 768px)').matches ||
+                           window.matchMedia('(hover: none)').matches;
+
+            if (isMobile) {
+                // Show bottom sheet modal on mobile
+                showInfoBottomSheet(e.target);
+            } else {
+                // Toggle active state for desktop tooltip
+                e.target.classList.toggle('active');
+            }
         } else {
-            // Close all tooltips when clicking elsewhere
+            // Close all tooltips when clicking elsewhere (desktop only)
             document.querySelectorAll('.info-icon.active').forEach(icon => {
                 icon.classList.remove('active');
             });
@@ -50,9 +61,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (e) => {
         if (e.target.classList.contains('info-icon') && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
-            e.target.classList.toggle('active');
+
+            const isMobile = window.matchMedia('(max-width: 768px)').matches ||
+                           window.matchMedia('(hover: none)').matches;
+
+            if (isMobile) {
+                showInfoBottomSheet(e.target);
+            } else {
+                e.target.classList.toggle('active');
+            }
         }
     });
+
+    // Initialize bottom sheet modal
+    initializeInfoBottomSheet();
 });
 
 function addLeg() {
@@ -2111,4 +2133,57 @@ function importEstimate() {
     };
 
     input.click();
+}
+
+// ============================================
+// INFO ICON BOTTOM SHEET MODAL
+// ============================================
+
+// Show info bottom sheet with tooltip content
+function showInfoBottomSheet(infoIcon) {
+    const tooltipText = infoIcon.getAttribute('data-tooltip');
+    if (!tooltipText) return;
+
+    const modal = document.getElementById('infoBottomSheet');
+    const textContainer = document.getElementById('infoSheetText');
+
+    // Set the tooltip text
+    textContainer.textContent = tooltipText;
+
+    // Show the modal with slight delay for smooth animation
+    requestAnimationFrame(() => {
+        modal.classList.add('active');
+    });
+
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+}
+
+// Close info bottom sheet
+function closeInfoBottomSheet() {
+    const modal = document.getElementById('infoBottomSheet');
+    modal.classList.remove('active');
+
+    // Restore body scroll
+    document.body.style.overflow = '';
+}
+
+// Initialize info bottom sheet event listeners
+function initializeInfoBottomSheet() {
+    const modal = document.getElementById('infoBottomSheet');
+    const backdrop = modal.querySelector('.bottom-sheet-backdrop');
+    const closeBtn = document.getElementById('infoSheetClose');
+
+    // Close on backdrop click
+    backdrop.addEventListener('click', closeInfoBottomSheet);
+
+    // Close on close button click
+    closeBtn.addEventListener('click', closeInfoBottomSheet);
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeInfoBottomSheet();
+        }
+    });
 }
