@@ -29,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize summary and action buttons
     initializeSummaryFeature();
 
+    // Initialize save/load functionality
+    initializeSaveLoad();
+
     // Handle info icon clicks for mobile tooltip
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('info-icon')) {
@@ -1365,5 +1368,468 @@ function handleReset() {
         // Update all displays
         updateSummary();
         updateTripDaysHelper();
+    }
+}
+
+// ============================================
+// SAVE/LOAD ESTIMATES FUNCTIONALITY
+// ============================================
+
+const ESTIMATES_STORAGE_KEY = 'tripEstimatorSavedEstimates';
+const AUTO_SAVE_KEY = 'tripEstimatorAutoSave';
+const AUTO_SAVE_INTERVAL = 120000; // 2 minutes
+const ESTIMATE_EXPIRY_DAYS = 7;
+let autoSaveTimer = null;
+
+// Get current estimate state
+function getCurrentEstimateState() {
+    return {
+        legs: legs.map(leg => ({ ...leg })),
+        crewMembers: crewMembers.map(crew => ({ ...crew })),
+        fuelParameters: {
+            fuelDensity: document.getElementById('fuelDensity').value,
+            fuelPrice: document.getElementById('fuelPrice').value,
+            apuFuelBurn: document.getElementById('apuFuelBurn').value
+        },
+        crewExpenses: {
+            tripDays: document.getElementById('tripDays').value,
+            hotelStays: document.getElementById('hotelStays').value,
+            hotelRate: document.getElementById('hotelRate').value,
+            mealsRate: document.getElementById('mealsRate').value,
+            otherRate: document.getElementById('otherRate').value,
+            rentalCar: document.getElementById('rentalCar').value,
+            airfare: document.getElementById('airfare').value,
+            mileage: document.getElementById('mileage').value
+        },
+        hourlyPrograms: {
+            maintenancePrograms: document.getElementById('maintenancePrograms').value,
+            otherConsumables: document.getElementById('otherConsumables').value,
+            additional: document.getElementById('additional').value
+        },
+        airportGroundCosts: {
+            landingFees: document.getElementById('landingFees').value,
+            catering: document.getElementById('catering').value,
+            handling: document.getElementById('handling').value,
+            passengerGroundTransport: document.getElementById('passengerGroundTransport').value,
+            facilityFees: document.getElementById('facilityFees').value,
+            specialEventFees: document.getElementById('specialEventFees').value,
+            rampParking: document.getElementById('rampParking').value,
+            customs: document.getElementById('customs').value,
+            hangar: document.getElementById('hangar').value,
+            otherAirportCosts: document.getElementById('otherAirportCosts').value
+        },
+        miscellaneous: {
+            tripCoordinationFee: document.getElementById('tripCoordinationFee').value,
+            otherMiscellaneous: document.getElementById('otherMiscellaneous').value
+        },
+        tripNotes: document.getElementById('tripNotes').value
+    };
+}
+
+// Apply estimate state to form
+function applyEstimateState(state) {
+    // Clear existing legs and crew
+    legs.length = 0;
+    crewMembers.length = 0;
+    legCount = 0;
+    crewCount = 0;
+    document.getElementById('legsContainer').innerHTML = '';
+    document.getElementById('crewContainer').innerHTML = '';
+
+    // Restore legs
+    state.legs.forEach(legData => {
+        legCount++;
+        const newLeg = {
+            id: legCount,
+            from: legData.from,
+            to: legData.to,
+            hours: legData.hours,
+            minutes: legData.minutes,
+            fuelBurn: legData.fuelBurn
+        };
+        legs.push(newLeg);
+        const legRow = createLegRow(newLeg);
+        document.getElementById('legsContainer').appendChild(legRow);
+    });
+
+    // Restore crew members
+    state.crewMembers.forEach(crewData => {
+        crewCount++;
+        const newCrew = {
+            id: crewCount,
+            role: crewData.role,
+            dailyRate: crewData.dailyRate
+        };
+        crewMembers.push(newCrew);
+        const crewRow = createCrewRow(newCrew);
+        document.getElementById('crewContainer').appendChild(crewRow);
+    });
+
+    // Restore fuel parameters
+    document.getElementById('fuelDensity').value = state.fuelParameters.fuelDensity;
+    document.getElementById('fuelPrice').value = state.fuelParameters.fuelPrice;
+    document.getElementById('apuFuelBurn').value = state.fuelParameters.apuFuelBurn;
+
+    // Restore crew expenses
+    document.getElementById('tripDays').value = state.crewExpenses.tripDays;
+    document.getElementById('hotelStays').value = state.crewExpenses.hotelStays;
+    document.getElementById('hotelRate').value = state.crewExpenses.hotelRate;
+    document.getElementById('mealsRate').value = state.crewExpenses.mealsRate;
+    document.getElementById('otherRate').value = state.crewExpenses.otherRate;
+    document.getElementById('rentalCar').value = state.crewExpenses.rentalCar;
+    document.getElementById('airfare').value = state.crewExpenses.airfare;
+    document.getElementById('mileage').value = state.crewExpenses.mileage;
+
+    // Restore hourly programs
+    document.getElementById('maintenancePrograms').value = state.hourlyPrograms.maintenancePrograms;
+    document.getElementById('otherConsumables').value = state.hourlyPrograms.otherConsumables;
+    document.getElementById('additional').value = state.hourlyPrograms.additional;
+
+    // Restore airport & ground costs
+    document.getElementById('landingFees').value = state.airportGroundCosts.landingFees;
+    document.getElementById('catering').value = state.airportGroundCosts.catering;
+    document.getElementById('handling').value = state.airportGroundCosts.handling;
+    document.getElementById('passengerGroundTransport').value = state.airportGroundCosts.passengerGroundTransport;
+    document.getElementById('facilityFees').value = state.airportGroundCosts.facilityFees;
+    document.getElementById('specialEventFees').value = state.airportGroundCosts.specialEventFees;
+    document.getElementById('rampParking').value = state.airportGroundCosts.rampParking;
+    document.getElementById('customs').value = state.airportGroundCosts.customs;
+    document.getElementById('hangar').value = state.airportGroundCosts.hangar;
+    document.getElementById('otherAirportCosts').value = state.airportGroundCosts.otherAirportCosts;
+
+    // Restore miscellaneous
+    document.getElementById('tripCoordinationFee').value = state.miscellaneous.tripCoordinationFee;
+    document.getElementById('otherMiscellaneous').value = state.miscellaneous.otherMiscellaneous;
+
+    // Restore trip notes
+    document.getElementById('tripNotes').value = state.tripNotes;
+
+    // Update all displays
+    updateSummary();
+    updateTripDaysHelper();
+    validateHotelFields();
+}
+
+// Get all saved estimates
+function getSavedEstimates() {
+    try {
+        const estimates = localStorage.getItem(ESTIMATES_STORAGE_KEY);
+        return estimates ? JSON.parse(estimates) : [];
+    } catch (e) {
+        console.error('Failed to load saved estimates:', e);
+        return [];
+    }
+}
+
+// Save estimates to localStorage
+function saveEstimatesToStorage(estimates) {
+    try {
+        localStorage.setItem(ESTIMATES_STORAGE_KEY, JSON.stringify(estimates));
+        return true;
+    } catch (e) {
+        console.error('Failed to save estimates:', e);
+        alert('Failed to save estimate. Your browser storage may be full.');
+        return false;
+    }
+}
+
+// Clean up old estimates (older than ESTIMATE_EXPIRY_DAYS)
+function cleanupOldEstimates() {
+    const estimates = getSavedEstimates();
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - ESTIMATE_EXPIRY_DAYS);
+
+    const filteredEstimates = estimates.filter(est => {
+        const estDate = new Date(est.timestamp);
+        return estDate >= cutoffDate;
+    });
+
+    if (filteredEstimates.length !== estimates.length) {
+        saveEstimatesToStorage(filteredEstimates);
+        console.log(`Cleaned up ${estimates.length - filteredEstimates.length} old estimate(s)`);
+    }
+}
+
+// Save estimate
+function saveEstimate(name, isAutoSave = false) {
+    const state = getCurrentEstimateState();
+    const estimate = {
+        id: isAutoSave ? 'autosave' : `estimate_${Date.now()}`,
+        name: name || 'Untitled Estimate',
+        timestamp: new Date().toISOString(),
+        isAutoSave: isAutoSave,
+        data: state
+    };
+
+    if (isAutoSave) {
+        // Save auto-save separately
+        try {
+            localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(estimate));
+            showAutoSaveIndicator();
+            return true;
+        } catch (e) {
+            console.error('Auto-save failed:', e);
+            return false;
+        }
+    } else {
+        // Save named estimate
+        let estimates = getSavedEstimates();
+
+        // Check if updating existing estimate
+        const existingIndex = estimates.findIndex(est => est.name === name);
+        if (existingIndex >= 0) {
+            estimates[existingIndex] = estimate;
+        } else {
+            estimates.push(estimate);
+        }
+
+        // Sort by timestamp (newest first)
+        estimates.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        return saveEstimatesToStorage(estimates);
+    }
+}
+
+// Load estimate
+function loadEstimate(estimateId) {
+    if (estimateId === 'autosave') {
+        try {
+            const autoSave = localStorage.getItem(AUTO_SAVE_KEY);
+            if (autoSave) {
+                const estimate = JSON.parse(autoSave);
+                applyEstimateState(estimate.data);
+                return true;
+            }
+        } catch (e) {
+            console.error('Failed to load auto-save:', e);
+            return false;
+        }
+    } else {
+        const estimates = getSavedEstimates();
+        const estimate = estimates.find(est => est.id === estimateId);
+
+        if (estimate) {
+            applyEstimateState(estimate.data);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Delete estimate
+function deleteEstimate(estimateId) {
+    let estimates = getSavedEstimates();
+    estimates = estimates.filter(est => est.id !== estimateId);
+    return saveEstimatesToStorage(estimates);
+}
+
+// Show auto-save indicator
+function showAutoSaveIndicator() {
+    const indicator = document.getElementById('autoSaveIndicator');
+    indicator.textContent = 'Auto-saved';
+    indicator.classList.add('visible');
+
+    setTimeout(() => {
+        indicator.classList.remove('visible');
+    }, 2000);
+}
+
+// Start auto-save timer
+function startAutoSave() {
+    if (autoSaveTimer) {
+        clearInterval(autoSaveTimer);
+    }
+
+    autoSaveTimer = setInterval(() => {
+        saveEstimate('Auto-save', true);
+    }, AUTO_SAVE_INTERVAL);
+}
+
+// Initialize save/load functionality
+function initializeSaveLoad() {
+    const saveBtn = document.getElementById('saveBtn');
+    const loadBtn = document.getElementById('loadBtn');
+    const saveModal = document.getElementById('saveModal');
+    const loadModal = document.getElementById('loadModal');
+    const saveModalClose = document.getElementById('saveModalClose');
+    const loadModalClose = document.getElementById('loadModalClose');
+    const saveEstimateBtn = document.getElementById('saveEstimateBtn');
+    const cancelSaveBtn = document.getElementById('cancelSaveBtn');
+    const cancelLoadBtn = document.getElementById('cancelLoadBtn');
+    const estimateNameInput = document.getElementById('estimateName');
+
+    // Open save modal
+    saveBtn.addEventListener('click', () => {
+        estimateNameInput.value = '';
+        saveModal.classList.add('active');
+        setTimeout(() => estimateNameInput.focus(), 100);
+    });
+
+    // Open load modal
+    loadBtn.addEventListener('click', () => {
+        displaySavedEstimates();
+        loadModal.classList.add('active');
+    });
+
+    // Close modals
+    saveModalClose.addEventListener('click', () => {
+        saveModal.classList.remove('active');
+    });
+
+    loadModalClose.addEventListener('click', () => {
+        loadModal.classList.remove('active');
+    });
+
+    cancelSaveBtn.addEventListener('click', () => {
+        saveModal.classList.remove('active');
+    });
+
+    cancelLoadBtn.addEventListener('click', () => {
+        loadModal.classList.remove('active');
+    });
+
+    // Close modal when clicking outside
+    window.addEventListener('click', (e) => {
+        if (e.target === saveModal) {
+            saveModal.classList.remove('active');
+        }
+        if (e.target === loadModal) {
+            loadModal.classList.remove('active');
+        }
+    });
+
+    // Save estimate
+    const doSave = () => {
+        const name = estimateNameInput.value.trim();
+        if (!name) {
+            alert('Please enter a name for the estimate');
+            return;
+        }
+
+        if (saveEstimate(name, false)) {
+            saveModal.classList.remove('active');
+
+            // Show success message
+            const indicator = document.getElementById('autoSaveIndicator');
+            indicator.textContent = '✓ Estimate saved!';
+            indicator.classList.add('visible');
+            setTimeout(() => {
+                indicator.classList.remove('visible');
+            }, 2000);
+        }
+    };
+
+    saveEstimateBtn.addEventListener('click', doSave);
+
+    // Allow Enter key to save
+    estimateNameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            doSave();
+        }
+    });
+
+    // Clean up old estimates on init
+    cleanupOldEstimates();
+
+    // Start auto-save
+    startAutoSave();
+}
+
+// Display saved estimates in load modal
+function displaySavedEstimates() {
+    const estimates = getSavedEstimates();
+    const estimatesList = document.getElementById('estimatesList');
+    const noEstimatesMessage = document.getElementById('noEstimatesMessage');
+
+    estimatesList.innerHTML = '';
+
+    if (estimates.length === 0) {
+        noEstimatesMessage.classList.add('visible');
+        estimatesList.style.display = 'none';
+    } else {
+        noEstimatesMessage.classList.remove('visible');
+        estimatesList.style.display = 'block';
+
+        estimates.forEach(estimate => {
+            const estimateItem = document.createElement('div');
+            estimateItem.className = 'estimate-item';
+
+            const estimateInfo = document.createElement('div');
+            estimateInfo.className = 'estimate-info';
+
+            const estimateName = document.createElement('div');
+            estimateName.className = 'estimate-name';
+            estimateName.textContent = estimate.name;
+
+            const estimateDate = document.createElement('div');
+            estimateDate.className = 'estimate-date';
+            const date = new Date(estimate.timestamp);
+            estimateDate.textContent = formatEstimateDate(date);
+
+            estimateInfo.appendChild(estimateName);
+            estimateInfo.appendChild(estimateDate);
+
+            const estimateActions = document.createElement('div');
+            estimateActions.className = 'estimate-actions';
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-delete-estimate';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (confirm(`Delete "${estimate.name}"?`)) {
+                    deleteEstimate(estimate.id);
+                    displaySavedEstimates();
+                }
+            };
+
+            estimateActions.appendChild(deleteBtn);
+
+            estimateItem.appendChild(estimateInfo);
+            estimateItem.appendChild(estimateActions);
+
+            // Load on click
+            estimateItem.addEventListener('click', () => {
+                if (loadEstimate(estimate.id)) {
+                    document.getElementById('loadModal').classList.remove('active');
+
+                    // Show success message
+                    const indicator = document.getElementById('autoSaveIndicator');
+                    indicator.textContent = '✓ Estimate loaded!';
+                    indicator.classList.add('visible');
+                    setTimeout(() => {
+                        indicator.classList.remove('visible');
+                    }, 2000);
+                } else {
+                    alert('Failed to load estimate');
+                }
+            });
+
+            estimatesList.appendChild(estimateItem);
+        });
+    }
+}
+
+// Format estimate date for display
+function formatEstimateDate(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) {
+        return 'Just now';
+    } else if (diffMins < 60) {
+        return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+    } else if (diffHours < 24) {
+        return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    } else if (diffDays === 1) {
+        return 'Yesterday';
+    } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+    } else {
+        return date.toLocaleDateString();
     }
 }
