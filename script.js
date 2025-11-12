@@ -142,6 +142,7 @@ function createLegRow(legData) {
                         min="0"
                         max="99"
                         value="${legData.hours}"
+                        inputmode="numeric"
                         oninput="validateHours(this, ${legData.id})"
                     >
                     <span class="time-separator">:</span>
@@ -154,6 +155,7 @@ function createLegRow(legData) {
                         min="0"
                         max="59"
                         value="${legData.minutes}"
+                        inputmode="numeric"
                         oninput="validateMinutes(this, ${legData.id})"
                     >
                 </div>
@@ -168,6 +170,7 @@ function createLegRow(legData) {
                     min="0"
                     step="1"
                     value="${legData.fuelBurn}"
+                    inputmode="numeric"
                     oninput="validateFuelBurn(this, ${legData.id})"
                 >
             </div>
