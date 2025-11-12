@@ -28,6 +28,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize summary and action buttons
     initializeSummaryFeature();
+
+    // Handle info icon clicks for mobile tooltip
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('info-icon')) {
+            e.stopPropagation();
+            // Toggle active state
+            e.target.classList.toggle('active');
+        } else {
+            // Close all tooltips when clicking elsewhere
+            document.querySelectorAll('.info-icon.active').forEach(icon => {
+                icon.classList.remove('active');
+            });
+        }
+    });
+
+    // Handle keyboard accessibility (Enter/Space to toggle)
+    document.addEventListener('keydown', (e) => {
+        if (e.target.classList.contains('info-icon') && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            e.target.classList.toggle('active');
+        }
+    });
 });
 
 function addLeg() {
@@ -779,7 +801,7 @@ function validateHourlyRate(input) {
 function getHourlyPrograms() {
     return {
         maintenancePrograms: parseFloat(document.getElementById('maintenancePrograms').value) || 0,
-        engineApu: parseFloat(document.getElementById('engineApu').value) || 0,
+        otherConsumables: parseFloat(document.getElementById('otherConsumables').value) || 0,
         additional: parseFloat(document.getElementById('additional').value) || 0
     };
 }
@@ -920,7 +942,7 @@ function updateTripEstimate() {
 
     // Get hourly programs
     const hourlyPrograms = getHourlyPrograms();
-    const hourlyRate = hourlyPrograms.maintenancePrograms + hourlyPrograms.engineApu + hourlyPrograms.additional;
+    const hourlyRate = hourlyPrograms.maintenancePrograms + hourlyPrograms.otherConsumables + hourlyPrograms.additional;
 
     // 1. Hourly Subtotal = Total Flight Hours × Hourly Rate
     const hourlySubtotal = totalFlightHours * hourlyRate;
@@ -1125,7 +1147,7 @@ function generateSummaryText() {
     // Hourly Subtotal
     const totalFlightHours = totalMinutes / 60;
     const hourlyPrograms = getHourlyPrograms();
-    const hourlyRate = hourlyPrograms.maintenancePrograms + hourlyPrograms.engineApu + hourlyPrograms.additional;
+    const hourlyRate = hourlyPrograms.maintenancePrograms + hourlyPrograms.otherConsumables + hourlyPrograms.additional;
     const hourlySubtotal = totalFlightHours * hourlyRate;
 
     if (hourlySubtotal > 0) {
@@ -1134,8 +1156,8 @@ function generateSummaryText() {
         if (hourlyPrograms.maintenancePrograms > 0) {
             summary += `  Maintenance Programs: $${(totalFlightHours * hourlyPrograms.maintenancePrograms).toFixed(2)} (${totalFlightHours.toFixed(2)} hrs × $${hourlyPrograms.maintenancePrograms.toFixed(2)})\n`;
         }
-        if (hourlyPrograms.engineApu > 0) {
-            summary += `  Engine/APU: $${(totalFlightHours * hourlyPrograms.engineApu).toFixed(2)} (${totalFlightHours.toFixed(2)} hrs × $${hourlyPrograms.engineApu.toFixed(2)})\n`;
+        if (hourlyPrograms.otherConsumables > 0) {
+            summary += `  Other Consumables: $${(totalFlightHours * hourlyPrograms.otherConsumables).toFixed(2)} (${totalFlightHours.toFixed(2)} hrs × $${hourlyPrograms.otherConsumables.toFixed(2)})\n`;
         }
         if (hourlyPrograms.additional > 0) {
             summary += `  Additional: $${(totalFlightHours * hourlyPrograms.additional).toFixed(2)} (${totalFlightHours.toFixed(2)} hrs × $${hourlyPrograms.additional.toFixed(2)})\n`;
@@ -1281,8 +1303,8 @@ function handleReset() {
         document.getElementById('airfare').value = '0.00';
         document.getElementById('mileage').value = '0.00';
 
-        document.getElementById('maintenancePrograms').value = '1048.00';
-        document.getElementById('engineApu').value = '0.00';
+        document.getElementById('maintenancePrograms').value = '1048.42';
+        document.getElementById('otherConsumables').value = '0.00';
         document.getElementById('additional').value = '0.00';
 
         document.getElementById('landingFees').value = '0.00';

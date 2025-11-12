@@ -98,7 +98,7 @@
                     <div class="field-group">
                         <label for="tripDays">
                             Trip Days
-                            <span class="info-icon" title="Trip Days = number of days crew charges their daily rate. May differ from calendar days (e.g., pilots might fly out same-day and return a week later = 2 trip days for a week-long trip).">ⓘ</span>
+                            <span class="info-icon" data-tooltip="Trip Days = number of days crew charges their daily rate. May differ from calendar days (e.g., pilots might fly out same-day and return a week later = 2 trip days for a week-long trip)." tabindex="0">ⓘ</span>
                         </label>
                         <input
                             type="number"
@@ -209,16 +209,16 @@
                         type="text"
                         inputmode="decimal"
                         id="maintenancePrograms"
-                        value="1048.00"
+                        value="1048.42"
                         oninput="validateHourlyRate(this)"
                     >
                 </div>
                 <div class="field-group">
-                    <label for="engineApu">Engine/APU ($/hour)</label>
+                    <label for="otherConsumables">Other Consumables ($/hour)</label>
                     <input
                         type="text"
                         inputmode="decimal"
-                        id="engineApu"
+                        id="otherConsumables"
                         value="0.00"
                         oninput="validateHourlyRate(this)"
                     >
