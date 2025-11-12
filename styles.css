@@ -268,6 +268,76 @@ h2 {
     cursor: help;
     font-size: 14px;
     font-weight: normal;
+    position: relative;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.info-icon::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #2c3e50;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: normal;
+    width: 280px;
+    max-width: 80vw;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.info-icon::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #2c3e50;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+/* Desktop hover behavior */
+@media (hover: hover) {
+    .info-icon:hover::after,
+    .info-icon:hover::before {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+/* Mobile tap behavior */
+.info-icon.active::after,
+.info-icon.active::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+@media (max-width: 768px) {
+    .info-icon {
+        cursor: pointer;
+        padding: 4px;
+        margin-left: 2px;
+    }
+
+    .info-icon::after {
+        width: 260px;
+        font-size: 12px;
+    }
 }
 
 .trip-days-helper {
@@ -286,7 +356,7 @@ h2 {
     color: #27ae60;
 }
 
-#tripDays.needs-attention {
+input.needs-attention {
     background-color: #fff3cd;
     border-color: #ffc107;
 }
