@@ -711,9 +711,41 @@ input.needs-attention {
 .modal-footer {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 12px;
     padding: 20px;
     border-top: 1px solid #e9ecef;
+}
+
+.save-options {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.save-options .btn-action {
+    margin: 0;
+}
+
+.save-success-message {
+    text-align: center;
+}
+
+.success-icon {
+    font-size: 48px;
+    color: #27ae60;
+    margin-bottom: 10px;
+}
+
+#saveFormButtons,
+#saveSuccessButtons {
+    display: flex;
+    gap: 12px;
+}
+
+#saveFormButtons .btn-action,
+#saveSuccessButtons .btn-action {
+    margin: 0;
 }
 
 /* Estimates List */
