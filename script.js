@@ -1657,6 +1657,7 @@ function initializeSaveLoad() {
     const saveEstimateBtn = document.getElementById('saveEstimateBtn');
     const cancelSaveBtn = document.getElementById('cancelSaveBtn');
     const cancelLoadBtn = document.getElementById('cancelLoadBtn');
+    const importBtn = document.getElementById('importBtn');
     const estimateNameInput = document.getElementById('estimateName');
 
     // Open save modal
@@ -1687,6 +1688,11 @@ function initializeSaveLoad() {
 
     cancelLoadBtn.addEventListener('click', () => {
         loadModal.classList.remove('active');
+    });
+
+    // Import estimate
+    importBtn.addEventListener('click', () => {
+        importEstimate();
     });
 
     // Close modal when clicking outside
@@ -1773,6 +1779,14 @@ function displaySavedEstimates() {
             const estimateActions = document.createElement('div');
             estimateActions.className = 'estimate-actions';
 
+            const exportBtn = document.createElement('button');
+            exportBtn.className = 'btn-export-estimate';
+            exportBtn.textContent = 'Export';
+            exportBtn.onclick = (e) => {
+                e.stopPropagation();
+                exportEstimate(estimate.id);
+            };
+
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn-delete-estimate';
             deleteBtn.textContent = 'Delete';
@@ -1784,6 +1798,7 @@ function displaySavedEstimates() {
                 }
             };
 
+            estimateActions.appendChild(exportBtn);
             estimateActions.appendChild(deleteBtn);
 
             estimateItem.appendChild(estimateInfo);
@@ -1832,4 +1847,137 @@ function formatEstimateDate(date) {
     } else {
         return date.toLocaleDateString();
     }
+}
+
+// Export estimate to JSON file
+function exportEstimate(estimateId) {
+    let estimate;
+
+    if (estimateId === 'current') {
+        // Export current form state
+        const state = getCurrentEstimateState();
+        estimate = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            name: 'Current Estimate',
+            data: state
+        };
+    } else {
+        // Export saved estimate
+        const estimates = getSavedEstimates();
+        const savedEstimate = estimates.find(est => est.id === estimateId);
+
+        if (!savedEstimate) {
+            alert('Estimate not found');
+            return;
+        }
+
+        estimate = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            name: savedEstimate.name,
+            originalTimestamp: savedEstimate.timestamp,
+            data: savedEstimate.data
+        };
+    }
+
+    // Create filename from estimate name
+    const filename = estimate.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') + '.json';
+
+    // Create blob and download
+    const blob = new Blob([JSON.stringify(estimate, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Show success message
+    const indicator = document.getElementById('autoSaveIndicator');
+    indicator.textContent = '✓ Exported!';
+    indicator.classList.add('visible');
+    setTimeout(() => {
+        indicator.classList.remove('visible');
+    }, 2000);
+}
+
+// Import estimate from JSON file
+function importEstimate() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            try {
+                const estimate = JSON.parse(event.target.result);
+
+                // Validate file format
+                if (!estimate.version || !estimate.data) {
+                    alert('Invalid file format. This does not appear to be a valid trip estimate file.');
+                    return;
+                }
+
+                // Check version compatibility
+                if (estimate.version !== '1.0') {
+                    if (!confirm(`This file was created with version ${estimate.version}. Continue anyway?`)) {
+                        return;
+                    }
+                }
+
+                // Validate required data structure
+                if (!estimate.data.legs || !estimate.data.crewMembers) {
+                    alert('Invalid file format. Required data is missing.');
+                    return;
+                }
+
+                // Show preview and confirm
+                const confirmMsg = `Import estimate: "${estimate.name}"?\n\n` +
+                    `Exported: ${new Date(estimate.exportDate).toLocaleString()}\n` +
+                    `Legs: ${estimate.data.legs.length}\n` +
+                    `Crew: ${estimate.data.crewMembers.length}`;
+
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
+
+                // Apply the estimate
+                applyEstimateState(estimate.data);
+
+                // Close modal if open
+                document.getElementById('loadModal').classList.remove('active');
+
+                // Show success message
+                const indicator = document.getElementById('autoSaveIndicator');
+                indicator.textContent = '✓ Imported successfully!';
+                indicator.classList.add('visible');
+                setTimeout(() => {
+                    indicator.classList.remove('visible');
+                }, 2000);
+
+            } catch (err) {
+                console.error('Import error:', err);
+                alert('Failed to import file. The file may be corrupted or in an invalid format.');
+            }
+        };
+
+        reader.onerror = () => {
+            alert('Failed to read file.');
+        };
+
+        reader.readAsText(file);
+    };
+
+    input.click();
 }

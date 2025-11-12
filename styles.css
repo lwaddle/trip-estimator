@@ -756,6 +756,21 @@ input.needs-attention {
     gap: 10px;
 }
 
+.btn-export-estimate {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.2s;
+}
+
+.btn-export-estimate:hover {
+    background-color: #2980b9;
+}
+
 .btn-delete-estimate {
     background-color: #e74c3c;
     color: white;
