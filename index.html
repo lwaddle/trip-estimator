@@ -406,8 +406,67 @@
 
         <section class="action-buttons-section">
             <button id="copyBtn" class="btn-action btn-primary">Copy to Clipboard</button>
+            <button id="saveBtn" class="btn-action btn-secondary">Save Estimate</button>
+            <button id="loadBtn" class="btn-action btn-secondary">Load Estimate</button>
             <button id="resetBtn" class="btn-action btn-secondary">Reset</button>
         </section>
+
+        <div id="autoSaveIndicator" class="auto-save-indicator"></div>
+    </div>
+
+    <!-- Save Estimate Modal -->
+    <div id="saveModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Save Estimate</h3>
+                <span class="modal-close" id="saveModalClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="saveFormView">
+                    <label for="estimateName">Estimate Name:</label>
+                    <input type="text" id="estimateName" placeholder="e.g., Aurora to Kenosha - Jan 15" autofocus>
+                </div>
+                <div id="saveSuccessView" style="display: none;">
+                    <div class="save-success-message">
+                        <div class="success-icon">✓</div>
+                        <h4 id="savedEstimateName"></h4>
+                        <p>Estimate saved successfully!</p>
+                    </div>
+                    <div class="save-options">
+                        <button id="exportSavedBtn" class="btn-action btn-primary">Export to File</button>
+                        <button id="saveAnotherBtn" class="btn-action btn-secondary">Save Another</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div id="saveFormButtons">
+                    <button id="exportCurrentBtn" class="btn-action btn-secondary">Export Without Saving</button>
+                    <button id="saveEstimateBtn" class="btn-action btn-primary">Save</button>
+                    <button id="cancelSaveBtn" class="btn-action btn-secondary">Cancel</button>
+                </div>
+                <div id="saveSuccessButtons" style="display: none;">
+                    <button id="closeSaveModalBtn" class="btn-action btn-secondary">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Estimate Modal -->
+    <div id="loadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Load Estimate</h3>
+                <span class="modal-close" id="loadModalClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="estimatesList"></div>
+                <div id="noEstimatesMessage" class="no-estimates-message">No saved estimates found.</div>
+            </div>
+            <div class="modal-footer">
+                <button id="importBtn" class="btn-action btn-secondary">Import from File</button>
+                <button id="cancelLoadBtn" class="btn-action btn-secondary">Cancel</button>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
