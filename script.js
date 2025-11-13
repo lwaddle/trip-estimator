@@ -1339,6 +1339,9 @@ function handleReset() {
     const confirmed = confirm('Are you sure you want to reset the entire form? All data will be lost.');
 
     if (confirmed) {
+        // Clear current estimate tracking
+        currentEstimateId = null;
+
         // Clear legs array and reset counter
         legs.length = 0;
         legCount = 0;
@@ -1400,11 +1403,13 @@ function handleReset() {
 // SAVE/LOAD ESTIMATES FUNCTIONALITY
 // ============================================
 
-const ESTIMATES_STORAGE_KEY = 'tripEstimatorSavedEstimates';
-const AUTO_SAVE_KEY = 'tripEstimatorAutoSave';
+// API Configuration
+const API_BASE_URL = '/api/estimates';
 const AUTO_SAVE_INTERVAL = 120000; // 2 minutes
-const ESTIMATE_EXPIRY_DAYS = 7;
+
+// Auto-save tracking
 let autoSaveTimer = null;
+let currentEstimateId = null; // Track the current estimate being worked on
 
 // Get current estimate state
 function getCurrentEstimateState() {
@@ -1535,121 +1540,149 @@ function applyEstimateState(state) {
     validateHotelFields();
 }
 
-// Get all saved estimates
-function getSavedEstimates() {
+// API Helper Functions
+async function apiCall(endpoint, options = {}) {
     try {
-        const estimates = localStorage.getItem(ESTIMATES_STORAGE_KEY);
-        return estimates ? JSON.parse(estimates) : [];
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'API request failed');
+        }
+
+        return await response.json();
+    } catch (e) {
+        console.error('API call failed:', e);
+        throw e;
+    }
+}
+
+// Get all saved estimates from server
+async function getSavedEstimates() {
+    try {
+        const result = await apiCall('');
+        return result.estimates || [];
     } catch (e) {
         console.error('Failed to load saved estimates:', e);
         return [];
     }
 }
 
-// Save estimates to localStorage
-function saveEstimatesToStorage(estimates) {
+// Get single estimate from server
+async function getEstimate(estimateId) {
     try {
-        localStorage.setItem(ESTIMATES_STORAGE_KEY, JSON.stringify(estimates));
+        const result = await apiCall(`/${estimateId}`);
+        return result;
+    } catch (e) {
+        console.error('Failed to load estimate:', e);
+        return null;
+    }
+}
+
+// Save estimate to server
+async function saveEstimate(name, isAutoSave = false) {
+    const state = getCurrentEstimateState();
+
+    try {
+        if (isAutoSave && currentEstimateId) {
+            // Update existing estimate (auto-save)
+            await apiCall(`/${currentEstimateId}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    data: state
+                })
+            });
+            showAutoSaveIndicator();
+            return currentEstimateId;
+        } else if (!isAutoSave) {
+            // Create new estimate or update existing by name
+            if (currentEstimateId) {
+                // Update existing
+                const result = await apiCall(`/${currentEstimateId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        name: name || 'Untitled Estimate',
+                        data: state
+                    })
+                });
+                return result.id;
+            } else {
+                // Create new
+                const result = await apiCall('', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: name || 'Untitled Estimate',
+                        data: state
+                    })
+                });
+                currentEstimateId = result.id;
+                return result.id;
+            }
+        } else {
+            // Auto-save but no current estimate ID - create new with auto-save name
+            const result = await apiCall('', {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: 'Auto-save',
+                    data: state
+                })
+            });
+            currentEstimateId = result.id;
+            showAutoSaveIndicator();
+            return result.id;
+        }
+    } catch (e) {
+        console.error('Failed to save estimate:', e);
+        if (!isAutoSave) {
+            alert('Failed to save estimate. Please check your connection.');
+        }
+        return false;
+    }
+}
+
+// Load estimate from server
+async function loadEstimate(estimateId) {
+    try {
+        const estimate = await getEstimate(estimateId);
+
+        if (estimate && estimate.data) {
+            applyEstimateState(estimate.data);
+            currentEstimateId = estimateId; // Track which estimate we're working on
+            return true;
+        }
+
+        return false;
+    } catch (e) {
+        console.error('Failed to load estimate:', e);
+        alert('Failed to load estimate. Please check your connection.');
+        return false;
+    }
+}
+
+// Delete estimate from server
+async function deleteEstimate(estimateId) {
+    try {
+        await apiCall(`/${estimateId}`, {
+            method: 'DELETE'
+        });
+
+        // If we deleted the current estimate, clear the tracking
+        if (currentEstimateId === estimateId) {
+            currentEstimateId = null;
+        }
+
         return true;
     } catch (e) {
-        console.error('Failed to save estimates:', e);
-        alert('Failed to save estimate. Your browser storage may be full.');
+        console.error('Failed to delete estimate:', e);
+        alert('Failed to delete estimate. Please check your connection.');
         return false;
     }
-}
-
-// Clean up old estimates (older than ESTIMATE_EXPIRY_DAYS)
-function cleanupOldEstimates() {
-    const estimates = getSavedEstimates();
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - ESTIMATE_EXPIRY_DAYS);
-
-    const filteredEstimates = estimates.filter(est => {
-        const estDate = new Date(est.timestamp);
-        return estDate >= cutoffDate;
-    });
-
-    if (filteredEstimates.length !== estimates.length) {
-        saveEstimatesToStorage(filteredEstimates);
-        console.log(`Cleaned up ${estimates.length - filteredEstimates.length} old estimate(s)`);
-    }
-}
-
-// Save estimate
-function saveEstimate(name, isAutoSave = false) {
-    const state = getCurrentEstimateState();
-    const estimate = {
-        id: isAutoSave ? 'autosave' : `estimate_${Date.now()}`,
-        name: name || 'Untitled Estimate',
-        timestamp: new Date().toISOString(),
-        isAutoSave: isAutoSave,
-        data: state
-    };
-
-    if (isAutoSave) {
-        // Save auto-save separately
-        try {
-            localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(estimate));
-            showAutoSaveIndicator();
-            return true;
-        } catch (e) {
-            console.error('Auto-save failed:', e);
-            return false;
-        }
-    } else {
-        // Save named estimate
-        let estimates = getSavedEstimates();
-
-        // Check if updating existing estimate
-        const existingIndex = estimates.findIndex(est => est.name === name);
-        if (existingIndex >= 0) {
-            estimates[existingIndex] = estimate;
-        } else {
-            estimates.push(estimate);
-        }
-
-        // Sort by timestamp (newest first)
-        estimates.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-        if (saveEstimatesToStorage(estimates)) {
-            return estimate.id; // Return the ID for export
-        }
-        return false;
-    }
-}
-
-// Load estimate
-function loadEstimate(estimateId) {
-    if (estimateId === 'autosave') {
-        try {
-            const autoSave = localStorage.getItem(AUTO_SAVE_KEY);
-            if (autoSave) {
-                const estimate = JSON.parse(autoSave);
-                applyEstimateState(estimate.data);
-                return true;
-            }
-        } catch (e) {
-            console.error('Failed to load auto-save:', e);
-            return false;
-        }
-    } else {
-        const estimates = getSavedEstimates();
-        const estimate = estimates.find(est => est.id === estimateId);
-
-        if (estimate) {
-            applyEstimateState(estimate.data);
-            return true;
-        }
-    }
-
-    return false;
-}
-
-// Delete estimate
-function deleteEstimate(estimateId) {
-    let estimates = getSavedEstimates();
-    estimates = estimates.filter(est => est.id !== estimateId);
-    return saveEstimatesToStorage(estimates);
 }
 
 // Show auto-save indicator
@@ -1758,24 +1791,34 @@ function initializeSaveLoad() {
     });
 
     // Save estimate
-    const doSave = () => {
+    const doSave = async () => {
         const name = estimateNameInput.value.trim();
         if (!name) {
             alert('Please enter a name for the estimate');
             return;
         }
 
-        const estimateId = saveEstimate(name, false);
-        if (estimateId) {
-            // Store the ID for export
-            lastSavedEstimateId = estimateId;
+        // Disable the save button while saving
+        saveEstimateBtn.disabled = true;
+        saveEstimateBtn.textContent = 'Saving...';
 
-            // Show success view
-            savedEstimateName.textContent = name;
-            saveFormView.style.display = 'none';
-            saveSuccessView.style.display = 'block';
-            saveFormButtons.style.display = 'none';
-            saveSuccessButtons.style.display = 'flex';
+        try {
+            const estimateId = await saveEstimate(name, false);
+            if (estimateId) {
+                // Store the ID for export
+                lastSavedEstimateId = estimateId;
+
+                // Show success view
+                savedEstimateName.textContent = name;
+                saveFormView.style.display = 'none';
+                saveSuccessView.style.display = 'block';
+                saveFormButtons.style.display = 'none';
+                saveSuccessButtons.style.display = 'flex';
+            }
+        } finally {
+            // Re-enable the save button
+            saveEstimateBtn.disabled = false;
+            saveEstimateBtn.textContent = 'Save';
         }
     };
 
@@ -1859,29 +1902,33 @@ function initializeSaveLoad() {
         setTimeout(resetSaveModal, 300);
     });
 
-    // Clean up old estimates on init
-    cleanupOldEstimates();
-
     // Start auto-save
     startAutoSave();
 }
 
 // Display saved estimates in load modal
-function displaySavedEstimates() {
-    const estimates = getSavedEstimates();
+async function displaySavedEstimates() {
     const estimatesList = document.getElementById('estimatesList');
     const noEstimatesMessage = document.getElementById('noEstimatesMessage');
 
-    estimatesList.innerHTML = '';
+    // Show loading state
+    estimatesList.innerHTML = '<div class="loading-message">Loading estimates...</div>';
+    estimatesList.style.display = 'block';
+    noEstimatesMessage.classList.remove('visible');
 
-    if (estimates.length === 0) {
-        noEstimatesMessage.classList.add('visible');
-        estimatesList.style.display = 'none';
-    } else {
-        noEstimatesMessage.classList.remove('visible');
-        estimatesList.style.display = 'block';
+    try {
+        const estimates = await getSavedEstimates();
 
-        estimates.forEach(estimate => {
+        estimatesList.innerHTML = '';
+
+        if (estimates.length === 0) {
+            noEstimatesMessage.classList.add('visible');
+            estimatesList.style.display = 'none';
+        } else {
+            noEstimatesMessage.classList.remove('visible');
+            estimatesList.style.display = 'block';
+
+            estimates.forEach(estimate => {
             const estimateItem = document.createElement('div');
             estimateItem.className = 'estimate-item';
 
@@ -1894,7 +1941,8 @@ function displaySavedEstimates() {
 
             const estimateDate = document.createElement('div');
             estimateDate.className = 'estimate-date';
-            const date = new Date(estimate.timestamp);
+            // API returns unix timestamps (seconds), convert to milliseconds
+            const date = new Date(estimate.updatedAt * 1000);
             estimateDate.textContent = formatEstimateDate(date);
 
             estimateInfo.appendChild(estimateName);
@@ -1914,11 +1962,11 @@ function displaySavedEstimates() {
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn-delete-estimate';
             deleteBtn.textContent = 'Delete';
-            deleteBtn.onclick = (e) => {
+            deleteBtn.onclick = async (e) => {
                 e.stopPropagation();
                 if (confirm(`Delete "${estimate.name}"?`)) {
-                    deleteEstimate(estimate.id);
-                    displaySavedEstimates();
+                    await deleteEstimate(estimate.id);
+                    await displaySavedEstimates();
                 }
             };
 
@@ -1929,8 +1977,9 @@ function displaySavedEstimates() {
             estimateItem.appendChild(estimateActions);
 
             // Load on click
-            estimateItem.addEventListener('click', () => {
-                if (loadEstimate(estimate.id)) {
+            estimateItem.addEventListener('click', async () => {
+                const success = await loadEstimate(estimate.id);
+                if (success) {
                     document.getElementById('loadModal').classList.remove('active');
 
                     // Show success message
@@ -1947,6 +1996,10 @@ function displaySavedEstimates() {
 
             estimatesList.appendChild(estimateItem);
         });
+        }
+    } catch (e) {
+        console.error('Failed to display estimates:', e);
+        estimatesList.innerHTML = '<div class="error-message">Failed to load estimates. Please check your connection.</div>';
     }
 }
 
@@ -1987,9 +2040,8 @@ async function exportEstimate(estimateId) {
             data: state
         };
     } else {
-        // Export saved estimate
-        const estimates = getSavedEstimates();
-        const savedEstimate = estimates.find(est => est.id === estimateId);
+        // Export saved estimate from server
+        const savedEstimate = await getEstimate(estimateId);
 
         if (!savedEstimate) {
             alert('Estimate not found');
@@ -2000,7 +2052,7 @@ async function exportEstimate(estimateId) {
             version: '1.0',
             exportDate: new Date().toISOString(),
             name: savedEstimate.name,
-            originalTimestamp: savedEstimate.timestamp,
+            originalTimestamp: savedEstimate.createdAt,
             data: savedEstimate.data
         };
     }

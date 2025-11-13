@@ -1,7 +1,7 @@
 # Trip Estimator
 
-**Trip Estimator** is a lightweight single-page web app for estimating dry lease trip costs in private aircraft operations.  
-It’s designed for simplicity — all client-side, no dependencies, and fast enough to run offline in a browser.
+**Trip Estimator** is a web app for estimating dry lease trip costs in private aircraft operations.
+Powered by Cloudflare Pages, D1 Database, and Zero Trust authentication for secure, multi-device access to your trip estimates.
 
 ---
 
@@ -19,21 +19,31 @@ It’s designed for simplicity — all client-side, no dependencies, and fast en
   - **Cost per hour**  
   - **Cost per leg**  
   - **Pre-tax and grand total**  
-- **Copy summary** button for quick text/email sharing  
-- Works entirely in the browser — no backend or login required
+- **Copy summary** button for quick text/email sharing
+- **Save & Load estimates** - All estimates stored securely in Cloudflare D1
+- **Auto-save** - Automatic backup every 2 minutes
+- **Multi-device sync** - Access your estimates from any browser
+- **Export/Import** - JSON export for backup and sharing
+- **Cloudflare Zero Trust** - Secure email-based authentication
 
 ---
 
 ## 💻 Usage
 
-1. Clone or download the repository.
-2. Open `trip-estimator.html` in any modern web browser.
-3. Enter your trip legs and cost parameters.
-4. Click **Calculate** to see the breakdown.
-5. Optionally use **Copy Summary** to share the results.
+### For End Users
 
-> For now, all data is local and ephemeral.  
-> Future versions may support saving trips and user authentication.
+1. Navigate to your deployed Trip Estimator URL
+2. Authenticate with your authorized email address (via Cloudflare Zero Trust)
+3. Enter your trip legs and cost parameters
+4. Estimates are automatically saved every 2 minutes
+5. Use **Save** to create named estimates
+6. Use **Load** to access previously saved estimates
+7. Use **Copy Summary** to share results
+8. Use **Export** to download estimates as JSON files
+
+### For Developers
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete setup and deployment instructions.
 
 ---
 
@@ -41,27 +51,49 @@ It’s designed for simplicity — all client-side, no dependencies, and fast en
 
 ```text
 trip-estimator/
-├── trip-estimator.html   # Complete self-contained app
-├── LICENSE               # MIT License
-└── README.md             # This file
+├── index.html                           # Main application HTML
+├── script.js                            # Application logic with API integration
+├── styles.css                           # Application styles
+├── functions/
+│   └── api/
+│       └── estimates/
+│           └── [[route]].js             # Pages Functions API endpoints
+├── migrations/
+│   └── 0001_initial_schema.sql          # D1 database schema
+├── wrangler.toml                        # Cloudflare configuration
+├── DEPLOYMENT.md                        # Deployment guide
+├── LICENSE                              # MIT License
+└── README.md                            # This file
 ```
 
 ---
 
 ## 🧱 Tech Stack
 
-- **HTML5 + CSS3 + Vanilla JavaScript**
+**Frontend:**
+- HTML5 + CSS3 + Vanilla JavaScript
 - No external libraries or frameworks
-- Works seamlessly on Cloudflare Pages, GitHub Pages, or any static host
+- Responsive design for desktop and mobile
+
+**Backend:**
+- Cloudflare Pages Functions (serverless API)
+- Cloudflare D1 (SQLite database)
+- Cloudflare Zero Trust (authentication)
+
+**Infrastructure:**
+- Deployed on Cloudflare Pages
+- Global CDN with edge computing
+- Zero-maintenance serverless architecture
 
 ---
 
-## 🚀 Planned Enhancements
+## 🚀 Future Enhancements
 
-- Local storage for saving recent trips  
-- Printable PDF output  
-- Destination-based crew rate presets  
-- Cloudflare Access login and D1 database integration  
+- Printable PDF output
+- Estimate sharing between users
+- Destination-based crew rate presets
+- Estimate history and versioning
+- Cost trend analysis and reporting  
 
 ---
 
