@@ -17,9 +17,19 @@ function getUserFromRequest(request) {
         return DEV_USER_EMAIL;
     }
 
+    // DEBUG: Log all headers to troubleshoot authentication
+    console.log('[AUTH DEBUG] Request headers:');
+    for (const [key, value] of request.headers.entries()) {
+        if (key.toLowerCase().includes('cf-access') || key.toLowerCase().includes('auth')) {
+            console.log(`  ${key}: ${value}`);
+        }
+    }
+
     // Production mode: require Cloudflare Access authentication
     // Cloudflare Access passes user email in the Cf-Access-Authenticated-User-Email header
     const email = request.headers.get('Cf-Access-Authenticated-User-Email');
+
+    console.log('[AUTH DEBUG] Extracted email:', email || 'NONE');
 
     if (!email) {
         throw new Error('No authenticated user found');
