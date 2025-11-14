@@ -1373,11 +1373,11 @@ async function generatePDF() {
     const contentWidth = pageWidth - (margin * 2);
     let yPos = margin;
 
-    // Colors
-    const primaryRed = '#bc282e';
-    const darkGray = '#334155';
-    const mediumGray = '#64748b';
-    const lightGray = '#e2e8f0';
+    // Colors (RGB format for jsPDF)
+    const primaryRed = [188, 40, 46];      // #bc282e
+    const darkGray = [51, 65, 85];         // #334155
+    const mediumGray = [100, 116, 139];    // #64748b
+    const lightGray = [226, 232, 240];     // #e2e8f0
 
     // Helper function to check if we need a new page
     function checkPageBreak(spaceNeeded) {
@@ -1391,15 +1391,15 @@ async function generatePDF() {
 
     // Helper function to add section header
     function addSectionHeader(title) {
-        checkPageBreak(15);
-        doc.setFillColor(primaryRed);
-        doc.rect(margin, yPos, contentWidth, 8, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(11);
+        checkPageBreak(10);
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text(title, margin + 2, yPos + 5.5);
-        yPos += 12;
-        doc.setTextColor(darkGray);
+        doc.setTextColor(...darkGray);
+        doc.text(title, margin, yPos);
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(...mediumGray);
+        doc.line(margin, yPos + 1, pageWidth - margin, yPos + 1);
+        yPos += 8;
     }
 
     // Helper function to add key-value pair
@@ -1407,22 +1407,27 @@ async function generatePDF() {
         checkPageBreak(6);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(mediumGray);
+        doc.setTextColor(...mediumGray);
         doc.text(key, margin + indent, yPos);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(darkGray);
+        doc.setTextColor(...darkGray);
         doc.text(value, pageWidth - margin, yPos, { align: 'right' });
         yPos += 5;
     }
 
     // Load and add logo
     try {
-        const logoResponse = await fetch('/images/logo.svg');
-        const logoSvg = await logoResponse.text();
+        const logoResponse = await fetch('/images/logo-jlw-aviation.png');
+        const logoBlob = await logoResponse.blob();
 
-        // Convert SVG to data URL for embedding
-        const logoDataUrl = 'data:image/svg+xml;base64,' + btoa(logoSvg);
-        doc.addImage(logoDataUrl, 'SVG', margin, yPos, 40, 19);
+        // Convert blob to data URL
+        const logoDataUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(logoBlob);
+        });
+
+        doc.addImage(logoDataUrl, 'PNG', margin, yPos, 27, 12.825);
         yPos += 22;
     } catch (err) {
         console.error('Failed to load logo:', err);
@@ -1432,19 +1437,26 @@ async function generatePDF() {
     // Title and Date
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(darkGray);
+    doc.setTextColor(...darkGray);
     doc.text('Trip Estimate', pageWidth / 2, yPos, { align: 'center' });
     yPos += 8;
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(mediumGray);
+    doc.setTextColor(...mediumGray);
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     doc.text(today, pageWidth / 2, yPos, { align: 'center' });
     yPos += 12;
 
+    // Filter for active legs (legs with flight time or fuel burn)
+    const activeLegs = legs.filter(leg => {
+        const hasFuelBurn = (parseInt(leg.fuelBurn, 10) || 0) > 0;
+        const hasFlightTime = (parseInt(leg.hours, 10) || 0) > 0 || (parseInt(leg.minutes, 10) || 0) > 0;
+        return hasFuelBurn || hasFlightTime;
+    });
+
     // Calculate totals for summary cards
-    const totalFlightMinutes = legs.reduce((sum, leg) => {
+    const totalFlightMinutes = activeLegs.reduce((sum, leg) => {
         const hours = parseInt(leg.hours, 10) || 0;
         const minutes = parseInt(leg.minutes, 10) || 0;
         return sum + (hours * 60) + minutes;
@@ -1453,23 +1465,25 @@ async function generatePDF() {
     const totalMinutes = totalFlightMinutes % 60;
 
     const fuelDensity = parseFloat(document.getElementById('fuelDensity').value) || 6.70;
-    const totalFuelLbs = legs.reduce((sum, leg) => {
+    const totalFuelLbs = activeLegs.reduce((sum, leg) => {
         return sum + (parseInt(leg.fuelBurn, 10) || 0);
     }, 0);
-    const apuFuelBurn = parseFloat(document.getElementById('apuFuelBurn').value) || 0;
-    const totalFuelGallons = ((totalFuelLbs + (apuFuelBurn * legs.length)) / fuelDensity).toFixed(1);
+    const apuFuelBurn = activeLegs.length > 0 ? (parseFloat(document.getElementById('apuFuelBurn').value) || 0) : 0;
+    const totalFuelGallons = ((totalFuelLbs + (apuFuelBurn * activeLegs.length)) / fuelDensity).toFixed(1);
 
     // Calculate grand total
     const fuelPrice = parseFloat(document.getElementById('fuelPrice').value) || 0;
     const fuelCost = parseFloat(totalFuelGallons) * fuelPrice;
 
-    let crewCost = 0;
-    crewMembers.forEach(crew => {
-        const dailyRate = parseFloat(crew.dailyRate) || 0;
-        crewCost += dailyRate;
-    });
-
     const tripDays = parseInt(document.getElementById('tripDays').value) || 0;
+
+    let crewCost = 0;
+    if (tripDays > 0) {
+        crewMembers.forEach(crew => {
+            const dailyRate = parseFloat(crew.dailyRate) || 0;
+            crewCost += dailyRate;
+        });
+    }
     const hotelStays = parseInt(document.getElementById('hotelStays').value) || 0;
     const hotelRate = parseFloat(document.getElementById('hotelRate').value) || 0;
     const mealsRate = parseFloat(document.getElementById('mealsRate').value) || 0;
@@ -1480,67 +1494,69 @@ async function generatePDF() {
 
     const crewExpenses = (hotelStays * hotelRate) + (tripDays * mealsRate) + (tripDays * otherRate) + rentalCar + airfare + mileage;
 
-    const maintenanceReserve = parseFloat(document.getElementById('maintenanceReserve').value) || 0;
+    const maintenanceReserve = parseFloat(document.getElementById('maintenancePrograms').value) || 0;
     const otherConsumables = parseFloat(document.getElementById('otherConsumables').value) || 0;
-    const additionalHourly = parseFloat(document.getElementById('additionalHourly').value) || 0;
+    const additionalHourly = parseFloat(document.getElementById('additional').value) || 0;
     const hourlyProgramsTotal = (maintenanceReserve + otherConsumables + additionalHourly) * (totalFlightMinutes / 60);
 
     let airportGroundTotal = 0;
-    ['landingFees', 'catering', 'handling', 'passengerGroundTransport', 'facilityFees', 'specialEventFees', 'rampParking', 'customs', 'hangar', 'otherAirportFees'].forEach(id => {
+    ['landingFees', 'catering', 'handling', 'passengerGroundTransport', 'facilityFees', 'specialEventFees', 'rampParking', 'customs', 'hangar', 'otherAirportCosts'].forEach(id => {
         airportGroundTotal += parseFloat(document.getElementById(id).value) || 0;
     });
 
-    const tripCoordination = parseFloat(document.getElementById('tripCoordination').value) || 0;
-    const otherMisc = parseFloat(document.getElementById('otherMisc').value) || 0;
+    const tripCoordination = parseFloat(document.getElementById('tripCoordinationFee').value) || 0;
+    const otherMisc = parseFloat(document.getElementById('otherMiscellaneous').value) || 0;
     const miscTotal = tripCoordination + otherMisc;
 
     const grandTotal = crewCost + crewExpenses + hourlyProgramsTotal + fuelCost + airportGroundTotal + miscTotal;
     const costPerHour = totalFlightMinutes > 0 ? grandTotal / (totalFlightMinutes / 60) : 0;
 
     // Summary Cards
-    doc.setFillColor(245, 245, 245);
     const cardWidth = (contentWidth - 6) / 3;
     const cardHeight = 18;
 
     // Flight Time Card
+    doc.setFillColor(245, 245, 245);
     doc.roundedRect(margin, yPos, cardWidth, cardHeight, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(mediumGray);
+    doc.setTextColor(...mediumGray);
     doc.text('Total Flight Time', margin + cardWidth / 2, yPos + 6, { align: 'center' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(primaryRed);
+    doc.setTextColor(...darkGray);
     doc.text(`${totalHours}h ${totalMinutes}m`, margin + cardWidth / 2, yPos + 14, { align: 'center' });
 
     // Fuel Card
+    doc.setFillColor(245, 245, 245);
     doc.roundedRect(margin + cardWidth + 3, yPos, cardWidth, cardHeight, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(mediumGray);
+    doc.setTextColor(...mediumGray);
     doc.text('Total Fuel', margin + cardWidth + 3 + cardWidth / 2, yPos + 6, { align: 'center' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(primaryRed);
+    doc.setTextColor(...darkGray);
     doc.text(`${totalFuelGallons} gal`, margin + cardWidth + 3 + cardWidth / 2, yPos + 14, { align: 'center' });
 
     // Cost Per Hour Card
+    doc.setFillColor(245, 245, 245);
     doc.roundedRect(margin + (cardWidth + 3) * 2, yPos, cardWidth, cardHeight, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(mediumGray);
+    doc.setTextColor(...mediumGray);
     doc.text('Cost Per Hour', margin + (cardWidth + 3) * 2 + cardWidth / 2, yPos + 6, { align: 'center' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(primaryRed);
+    doc.setTextColor(...darkGray);
     doc.text(`$${formatCurrency(costPerHour)}`, margin + (cardWidth + 3) * 2 + cardWidth / 2, yPos + 14, { align: 'center' });
 
     yPos += cardHeight + 10;
 
     // Flight Legs
-    if (legs.length > 0) {
+    if (activeLegs.length > 0) {
         addSectionHeader('FLIGHT LEGS');
-        legs.sort((a, b) => a.id - b.id).forEach((leg, index) => {
+        activeLegs.sort((a, b) => a.id - b.id).forEach((leg, index) => {
             const from = leg.from || '---';
             const to = leg.to || '---';
             const hours = parseInt(leg.hours, 10) || 0;
@@ -1551,18 +1567,18 @@ async function generatePDF() {
             checkPageBreak(6);
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(darkGray);
-            doc.text(`${from} → ${to}`, margin + 2, yPos);
+            doc.setTextColor(...darkGray);
+            doc.text(`${from} - ${to}`, margin + 2, yPos);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(mediumGray);
-            doc.text(`${hours}h ${minutes}m  •  ${gallons} gal`, pageWidth - margin, yPos, { align: 'right' });
+            doc.setTextColor(...mediumGray);
+            doc.text(`${hours}h ${minutes}m - ${gallons} gal`, pageWidth - margin, yPos, { align: 'right' });
             yPos += 5;
         });
         yPos += 3;
     }
 
     // Crew Costs
-    if (crewMembers.length > 0) {
+    if (crewMembers.length > 0 && tripDays > 0) {
         addSectionHeader('CREW COSTS');
         crewMembers.forEach(crew => {
             const role = crew.role || 'Crew Member';
@@ -1584,10 +1600,12 @@ async function generatePDF() {
     }
 
     // Fuel
-    addSectionHeader('FUEL');
-    addKeyValue('Total Fuel', totalFuelGallons + ' gal @ $' + fuelPrice + '/gal', 2);
-    addKeyValue('Fuel Subtotal:', '$' + formatCurrency(fuelCost), 2);
-    yPos += 2;
+    if (activeLegs.length > 0) {
+        addSectionHeader('FUEL');
+        addKeyValue('Total Fuel', totalFuelGallons + ' gal @ $' + fuelPrice + '/gal', 2);
+        addKeyValue('Fuel Subtotal:', '$' + formatCurrency(fuelCost), 2);
+        yPos += 2;
+    }
 
     // Airport & Ground
     if (airportGroundTotal > 0) {
@@ -1602,7 +1620,7 @@ async function generatePDF() {
             { id: 'rampParking', label: 'Ramp/Parking' },
             { id: 'customs', label: 'Customs' },
             { id: 'hangar', label: 'Hangar' },
-            { id: 'otherAirportFees', label: 'Other' }
+            { id: 'otherAirportCosts', label: 'Other' }
         ];
         airportFields.forEach(field => {
             const value = parseFloat(document.getElementById(field.id).value) || 0;
@@ -1624,11 +1642,11 @@ async function generatePDF() {
     // Grand Total
     checkPageBreak(20);
     yPos += 5;
-    doc.setFillColor(primaryRed);
+    doc.setFillColor(245, 245, 245);
     doc.rect(margin, yPos, contentWidth, 12, 'F');
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(...darkGray);
     doc.text('ESTIMATED TOTAL', margin + 2, yPos + 8);
     doc.text('$' + formatCurrency(grandTotal), pageWidth - margin - 2, yPos + 8, { align: 'right' });
     yPos += 16;
@@ -1640,7 +1658,7 @@ async function generatePDF() {
         addSectionHeader('TRIP NOTES');
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(darkGray);
+        doc.setTextColor(...darkGray);
         const splitNotes = doc.splitTextToSize(tripNotes, contentWidth - 4);
         splitNotes.forEach(line => {
             checkPageBreak(5);
