@@ -1417,12 +1417,17 @@ async function generatePDF() {
 
     // Load and add logo
     try {
-        const logoResponse = await fetch('/images/logo.svg');
-        const logoSvg = await logoResponse.text();
+        const logoResponse = await fetch('/images/logo-jlw-aviation.png');
+        const logoBlob = await logoResponse.blob();
 
-        // Convert SVG to data URL for embedding
-        const logoDataUrl = 'data:image/svg+xml;base64,' + btoa(logoSvg);
-        doc.addImage(logoDataUrl, 'SVG', margin, yPos, 40, 19);
+        // Convert blob to data URL
+        const logoDataUrl = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(logoBlob);
+        });
+
+        doc.addImage(logoDataUrl, 'PNG', margin, yPos, 40, 19);
         yPos += 22;
     } catch (err) {
         console.error('Failed to load logo:', err);
