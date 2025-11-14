@@ -2358,34 +2358,56 @@ async function getUserEmail() {
 
 // Initialize user menu
 async function initializeUserMenu() {
+    // Desktop menu elements
     const userEmailEl = document.getElementById('userEmail');
     const userMenuTrigger = document.getElementById('userMenuTrigger');
     const userMenuDropdown = document.getElementById('userMenuDropdown');
     const signOutBtn = document.getElementById('signOutBtn');
 
+    // Mobile menu elements
+    const mobileUserEmailEl = document.getElementById('mobileUserEmail');
+    const hamburgerMenuBtn = document.getElementById('hamburgerMenuBtn');
+    const mobileMenuDropdown = document.getElementById('mobileMenuDropdown');
+    const mobileSignOutBtn = document.getElementById('mobileSignOutBtn');
+
     // Load and display user email
     const email = await getUserEmail();
     userEmailEl.textContent = email;
+    mobileUserEmailEl.textContent = email;
 
-    // Toggle dropdown on trigger click
+    // Desktop menu - Toggle dropdown on trigger click
     userMenuTrigger.addEventListener('click', (e) => {
         e.stopPropagation();
         userMenuTrigger.classList.toggle('active');
         userMenuDropdown.classList.toggle('active');
     });
 
-    // Close dropdown when clicking outside
+    // Mobile menu - Toggle dropdown on hamburger click
+    hamburgerMenuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mobileMenuDropdown.classList.toggle('active');
+    });
+
+    // Close dropdowns when clicking outside
     document.addEventListener('click', (e) => {
+        // Close desktop menu
         if (!userMenuTrigger.contains(e.target) && !userMenuDropdown.contains(e.target)) {
             userMenuTrigger.classList.remove('active');
             userMenuDropdown.classList.remove('active');
         }
+        // Close mobile menu
+        if (!hamburgerMenuBtn.contains(e.target) && !mobileMenuDropdown.contains(e.target)) {
+            mobileMenuDropdown.classList.remove('active');
+        }
     });
 
-    // Handle sign out
+    // Handle sign out - Desktop
     signOutBtn.addEventListener('click', () => {
-        // Redirect to Cloudflare Access logout URL
-        // This will clear the CF_Authorization cookie
+        window.location.href = '/cdn-cgi/access/logout';
+    });
+
+    // Handle sign out - Mobile
+    mobileSignOutBtn.addEventListener('click', () => {
         window.location.href = '/cdn-cgi/access/logout';
     });
 }
