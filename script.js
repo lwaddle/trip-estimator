@@ -1061,10 +1061,12 @@ function formatCurrency(amount) {
 // Initialize Summary Feature
 function initializeSummaryFeature() {
     const copyBtn = document.getElementById('copyBtn');
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
     const resetBtn = document.getElementById('resetBtn');
     const tripNotesTextarea = document.getElementById('tripNotes');
 
     copyBtn.addEventListener('click', handleCopy);
+    exportPdfBtn.addEventListener('click', handleExportPdf);
     resetBtn.addEventListener('click', handleReset);
 
     // Add listener for trip notes textarea to update estimate display
@@ -1332,6 +1334,327 @@ function handleCopy() {
         console.error('Failed to copy text: ', err);
         alert('Failed to copy to clipboard. Please try again.');
     });
+}
+
+// Handle Export PDF Button Click
+async function handleExportPdf() {
+    const btn = document.getElementById('exportPdfBtn');
+    const originalText = btn.textContent;
+
+    try {
+        btn.textContent = 'Generating PDF...';
+        btn.disabled = true;
+
+        // Generate PDF
+        await generatePDF();
+
+        // Show success feedback
+        btn.textContent = 'Downloaded!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }, 2000);
+    } catch (err) {
+        console.error('Failed to generate PDF: ', err);
+        alert('Failed to generate PDF. Please try again.');
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+
+// Generate PDF with professional layout
+async function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    let yPos = margin;
+
+    // Colors
+    const primaryRed = '#bc282e';
+    const darkGray = '#334155';
+    const mediumGray = '#64748b';
+    const lightGray = '#e2e8f0';
+
+    // Helper function to check if we need a new page
+    function checkPageBreak(spaceNeeded) {
+        if (yPos + spaceNeeded > pageHeight - margin) {
+            doc.addPage();
+            yPos = margin;
+            return true;
+        }
+        return false;
+    }
+
+    // Helper function to add section header
+    function addSectionHeader(title) {
+        checkPageBreak(15);
+        doc.setFillColor(primaryRed);
+        doc.rect(margin, yPos, contentWidth, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, margin + 2, yPos + 5.5);
+        yPos += 12;
+        doc.setTextColor(darkGray);
+    }
+
+    // Helper function to add key-value pair
+    function addKeyValue(key, value, indent = 0) {
+        checkPageBreak(6);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(mediumGray);
+        doc.text(key, margin + indent, yPos);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(darkGray);
+        doc.text(value, pageWidth - margin, yPos, { align: 'right' });
+        yPos += 5;
+    }
+
+    // Load and add logo
+    try {
+        const logoResponse = await fetch('/images/logo.svg');
+        const logoSvg = await logoResponse.text();
+
+        // Convert SVG to data URL for embedding
+        const logoDataUrl = 'data:image/svg+xml;base64,' + btoa(logoSvg);
+        doc.addImage(logoDataUrl, 'SVG', margin, yPos, 40, 19);
+        yPos += 22;
+    } catch (err) {
+        console.error('Failed to load logo:', err);
+        yPos += 5;
+    }
+
+    // Title and Date
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(darkGray);
+    doc.text('Trip Estimate', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 8;
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(mediumGray);
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    doc.text(today, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 12;
+
+    // Calculate totals for summary cards
+    const totalFlightMinutes = legs.reduce((sum, leg) => {
+        const hours = parseInt(leg.hours, 10) || 0;
+        const minutes = parseInt(leg.minutes, 10) || 0;
+        return sum + (hours * 60) + minutes;
+    }, 0);
+    const totalHours = Math.floor(totalFlightMinutes / 60);
+    const totalMinutes = totalFlightMinutes % 60;
+
+    const fuelDensity = parseFloat(document.getElementById('fuelDensity').value) || 6.70;
+    const totalFuelLbs = legs.reduce((sum, leg) => {
+        return sum + (parseInt(leg.fuelBurn, 10) || 0);
+    }, 0);
+    const apuFuelBurn = parseFloat(document.getElementById('apuFuelBurn').value) || 0;
+    const totalFuelGallons = ((totalFuelLbs + (apuFuelBurn * legs.length)) / fuelDensity).toFixed(1);
+
+    // Calculate grand total
+    const fuelPrice = parseFloat(document.getElementById('fuelPrice').value) || 0;
+    const fuelCost = parseFloat(totalFuelGallons) * fuelPrice;
+
+    let crewCost = 0;
+    crewMembers.forEach(crew => {
+        const dailyRate = parseFloat(crew.dailyRate) || 0;
+        crewCost += dailyRate;
+    });
+
+    const tripDays = parseInt(document.getElementById('tripDays').value) || 0;
+    const hotelStays = parseInt(document.getElementById('hotelStays').value) || 0;
+    const hotelRate = parseFloat(document.getElementById('hotelRate').value) || 0;
+    const mealsRate = parseFloat(document.getElementById('mealsRate').value) || 0;
+    const otherRate = parseFloat(document.getElementById('otherRate').value) || 0;
+    const rentalCar = parseFloat(document.getElementById('rentalCar').value) || 0;
+    const airfare = parseFloat(document.getElementById('airfare').value) || 0;
+    const mileage = parseFloat(document.getElementById('mileage').value) || 0;
+
+    const crewExpenses = (hotelStays * hotelRate) + (tripDays * mealsRate) + (tripDays * otherRate) + rentalCar + airfare + mileage;
+
+    const maintenanceReserve = parseFloat(document.getElementById('maintenanceReserve').value) || 0;
+    const otherConsumables = parseFloat(document.getElementById('otherConsumables').value) || 0;
+    const additionalHourly = parseFloat(document.getElementById('additionalHourly').value) || 0;
+    const hourlyProgramsTotal = (maintenanceReserve + otherConsumables + additionalHourly) * (totalFlightMinutes / 60);
+
+    let airportGroundTotal = 0;
+    ['landingFees', 'catering', 'handling', 'passengerGroundTransport', 'facilityFees', 'specialEventFees', 'rampParking', 'customs', 'hangar', 'otherAirportFees'].forEach(id => {
+        airportGroundTotal += parseFloat(document.getElementById(id).value) || 0;
+    });
+
+    const tripCoordination = parseFloat(document.getElementById('tripCoordination').value) || 0;
+    const otherMisc = parseFloat(document.getElementById('otherMisc').value) || 0;
+    const miscTotal = tripCoordination + otherMisc;
+
+    const grandTotal = crewCost + crewExpenses + hourlyProgramsTotal + fuelCost + airportGroundTotal + miscTotal;
+    const costPerHour = totalFlightMinutes > 0 ? grandTotal / (totalFlightMinutes / 60) : 0;
+
+    // Summary Cards
+    doc.setFillColor(245, 245, 245);
+    const cardWidth = (contentWidth - 6) / 3;
+    const cardHeight = 18;
+
+    // Flight Time Card
+    doc.roundedRect(margin, yPos, cardWidth, cardHeight, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(mediumGray);
+    doc.text('Total Flight Time', margin + cardWidth / 2, yPos + 6, { align: 'center' });
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(primaryRed);
+    doc.text(`${totalHours}h ${totalMinutes}m`, margin + cardWidth / 2, yPos + 14, { align: 'center' });
+
+    // Fuel Card
+    doc.roundedRect(margin + cardWidth + 3, yPos, cardWidth, cardHeight, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(mediumGray);
+    doc.text('Total Fuel', margin + cardWidth + 3 + cardWidth / 2, yPos + 6, { align: 'center' });
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(primaryRed);
+    doc.text(`${totalFuelGallons} gal`, margin + cardWidth + 3 + cardWidth / 2, yPos + 14, { align: 'center' });
+
+    // Cost Per Hour Card
+    doc.roundedRect(margin + (cardWidth + 3) * 2, yPos, cardWidth, cardHeight, 2, 2, 'F');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(mediumGray);
+    doc.text('Cost Per Hour', margin + (cardWidth + 3) * 2 + cardWidth / 2, yPos + 6, { align: 'center' });
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(primaryRed);
+    doc.text(`$${formatCurrency(costPerHour)}`, margin + (cardWidth + 3) * 2 + cardWidth / 2, yPos + 14, { align: 'center' });
+
+    yPos += cardHeight + 10;
+
+    // Flight Legs
+    if (legs.length > 0) {
+        addSectionHeader('FLIGHT LEGS');
+        legs.sort((a, b) => a.id - b.id).forEach((leg, index) => {
+            const from = leg.from || '---';
+            const to = leg.to || '---';
+            const hours = parseInt(leg.hours, 10) || 0;
+            const minutes = parseInt(leg.minutes, 10) || 0;
+            const fuelBurn = parseInt(leg.fuelBurn, 10) || 0;
+            const gallons = (fuelBurn / fuelDensity).toFixed(1);
+
+            checkPageBreak(6);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(darkGray);
+            doc.text(`${from} → ${to}`, margin + 2, yPos);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(mediumGray);
+            doc.text(`${hours}h ${minutes}m  •  ${gallons} gal`, pageWidth - margin, yPos, { align: 'right' });
+            yPos += 5;
+        });
+        yPos += 3;
+    }
+
+    // Crew Costs
+    if (crewMembers.length > 0) {
+        addSectionHeader('CREW COSTS');
+        crewMembers.forEach(crew => {
+            const role = crew.role || 'Crew Member';
+            const rate = parseFloat(crew.dailyRate) || 0;
+            addKeyValue(role + ' (daily rate)', '$' + formatCurrency(rate), 2);
+        });
+        addKeyValue('Crew Expenses:', '$' + formatCurrency(crewExpenses), 2);
+        yPos += 2;
+    }
+
+    // Hourly Programs
+    if (hourlyProgramsTotal > 0) {
+        addSectionHeader('HOURLY PROGRAMS & RESERVES');
+        if (maintenanceReserve > 0) addKeyValue('Maintenance Reserve', '$' + formatCurrency(maintenanceReserve * (totalFlightMinutes / 60)), 2);
+        if (otherConsumables > 0) addKeyValue('Other Consumables', '$' + formatCurrency(otherConsumables * (totalFlightMinutes / 60)), 2);
+        if (additionalHourly > 0) addKeyValue('Additional', '$' + formatCurrency(additionalHourly * (totalFlightMinutes / 60)), 2);
+        addKeyValue('Hourly Subtotal:', '$' + formatCurrency(hourlyProgramsTotal), 2);
+        yPos += 2;
+    }
+
+    // Fuel
+    addSectionHeader('FUEL');
+    addKeyValue('Total Fuel', totalFuelGallons + ' gal @ $' + fuelPrice + '/gal', 2);
+    addKeyValue('Fuel Subtotal:', '$' + formatCurrency(fuelCost), 2);
+    yPos += 2;
+
+    // Airport & Ground
+    if (airportGroundTotal > 0) {
+        addSectionHeader('AIRPORT & GROUND COSTS');
+        const airportFields = [
+            { id: 'landingFees', label: 'Landing Fees' },
+            { id: 'catering', label: 'Catering' },
+            { id: 'handling', label: 'Handling' },
+            { id: 'passengerGroundTransport', label: 'Passenger Ground Transport' },
+            { id: 'facilityFees', label: 'Facility Fees' },
+            { id: 'specialEventFees', label: 'Special Event Fees' },
+            { id: 'rampParking', label: 'Ramp/Parking' },
+            { id: 'customs', label: 'Customs' },
+            { id: 'hangar', label: 'Hangar' },
+            { id: 'otherAirportFees', label: 'Other' }
+        ];
+        airportFields.forEach(field => {
+            const value = parseFloat(document.getElementById(field.id).value) || 0;
+            if (value > 0) addKeyValue(field.label, '$' + formatCurrency(value), 2);
+        });
+        addKeyValue('Airport & Ground Subtotal:', '$' + formatCurrency(airportGroundTotal), 2);
+        yPos += 2;
+    }
+
+    // Miscellaneous
+    if (miscTotal > 0) {
+        addSectionHeader('MISCELLANEOUS');
+        if (tripCoordination > 0) addKeyValue('Trip Coordination Fee', '$' + formatCurrency(tripCoordination), 2);
+        if (otherMisc > 0) addKeyValue('Other', '$' + formatCurrency(otherMisc), 2);
+        addKeyValue('Miscellaneous Subtotal:', '$' + formatCurrency(miscTotal), 2);
+        yPos += 2;
+    }
+
+    // Grand Total
+    checkPageBreak(20);
+    yPos += 5;
+    doc.setFillColor(primaryRed);
+    doc.rect(margin, yPos, contentWidth, 12, 'F');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('ESTIMATED TOTAL', margin + 2, yPos + 8);
+    doc.text('$' + formatCurrency(grandTotal), pageWidth - margin - 2, yPos + 8, { align: 'right' });
+    yPos += 16;
+
+    // Trip Notes
+    const tripNotes = document.getElementById('tripNotes').value.trim();
+    if (tripNotes) {
+        checkPageBreak(20);
+        addSectionHeader('TRIP NOTES');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(darkGray);
+        const splitNotes = doc.splitTextToSize(tripNotes, contentWidth - 4);
+        splitNotes.forEach(line => {
+            checkPageBreak(5);
+            doc.text(line, margin + 2, yPos);
+            yPos += 5;
+        });
+    }
+
+    // Generate filename with date
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = `trip-estimate-${dateStr}.pdf`;
+
+    // Save the PDF
+    doc.save(filename);
 }
 
 // Handle Reset Button Click
