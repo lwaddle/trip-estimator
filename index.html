@@ -7,11 +7,57 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=1.0.0">
+    <link rel="stylesheet" href="styles.css?v=1.0.1">
 </head>
 <body>
+    <header class="app-header">
+        <div class="header-content">
+            <div class="header-logo">
+                <img src="images/logo.svg" alt="JLW Aviation" class="logo-image">
+            </div>
+
+            <!-- Desktop user menu -->
+            <div class="user-menu desktop-only">
+                <button class="user-menu-trigger" id="userMenuTrigger">
+                    <span class="user-email" id="userEmail">Loading...</span>
+                    <svg class="dropdown-icon" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div class="user-menu-dropdown" id="userMenuDropdown">
+                    <button class="user-menu-item" id="signOutBtn">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M6 14H3.33333C2.97971 14 2.64057 13.8595 2.39052 13.6095C2.14048 13.3594 2 13.0203 2 12.6667V3.33333C2 2.97971 2.14048 2.64057 2.39052 2.39052C2.64057 2.14048 2.97971 2 3.33333 2H6M10.6667 11.3333L14 8M14 8L10.6667 4.66667M14 8H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile hamburger menu -->
+            <div class="mobile-menu mobile-only">
+                <button class="hamburger-menu" id="hamburgerMenuBtn">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="mobile-menu-dropdown" id="mobileMenuDropdown">
+                    <div class="mobile-menu-header">
+                        <span class="mobile-user-email" id="mobileUserEmail">Loading...</span>
+                    </div>
+                    <button class="mobile-menu-item" id="mobileSignOutBtn">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M6 14H3.33333C2.97971 14 2.64057 13.8595 2.39052 13.6095C2.14048 13.3594 2 13.0203 2 12.6667V3.33333C2 2.97971 2.14048 2.64057 2.39052 2.39052C2.64057 2.14048 2.97971 2 3.33333 2H6M10.6667 11.3333L14 8M14 8L10.6667 4.66667M14 8H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
     <div class="container">
-        <h1>Dry Lease Trip Cost Estimator</h1>
 
         <section class="flight-legs-section">
             <div class="section-header">
