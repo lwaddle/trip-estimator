@@ -1417,7 +1417,7 @@ async function generatePDF() {
 
     // Load and add logo
     try {
-        const logoResponse = await fetch('images/logo.svg');
+        const logoResponse = await fetch('/images/logo.svg');
         const logoSvg = await logoResponse.text();
 
         // Convert SVG to data URL for embedding
