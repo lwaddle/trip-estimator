@@ -2313,3 +2313,86 @@ function initializeInfoBottomSheet() {
         }
     });
 }
+
+// ============================================
+// USER MENU & AUTHENTICATION
+// ============================================
+
+// Get authenticated user email from Cloudflare Access
+async function getUserEmail() {
+    try {
+        // Try to get email from Cloudflare Access header via API
+        const response = await fetch('/api/estimates');
+        const cfEmail = response.headers.get('Cf-Access-Authenticated-User-Email');
+        
+        if (cfEmail) {
+            return cfEmail;
+        }
+
+        // Fallback: decode from CF_Authorization cookie
+        const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+            const [name, value] = cookie.trim().split('=');
+            acc[name] = value;
+            return acc;
+        }, {});
+
+        const token = cookies['CF_Authorization'];
+        if (token) {
+            const parts = token.split('.');
+            if (parts.length === 3) {
+                const payload = parts[1];
+                const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+                const paddedBase64 = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+                const jsonPayload = atob(paddedBase64);
+                const decoded = JSON.parse(jsonPayload);
+                return decoded.email;
+            }
+        }
+
+        return 'User';
+    } catch (error) {
+        console.error('Failed to get user email:', error);
+        return 'User';
+    }
+}
+
+// Initialize user menu
+async function initializeUserMenu() {
+    const userEmailEl = document.getElementById('userEmail');
+    const userMenuTrigger = document.getElementById('userMenuTrigger');
+    const userMenuDropdown = document.getElementById('userMenuDropdown');
+    const signOutBtn = document.getElementById('signOutBtn');
+
+    // Load and display user email
+    const email = await getUserEmail();
+    userEmailEl.textContent = email;
+
+    // Toggle dropdown on trigger click
+    userMenuTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        userMenuTrigger.classList.toggle('active');
+        userMenuDropdown.classList.toggle('active');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!userMenuTrigger.contains(e.target) && !userMenuDropdown.contains(e.target)) {
+            userMenuTrigger.classList.remove('active');
+            userMenuDropdown.classList.remove('active');
+        }
+    });
+
+    // Handle sign out
+    signOutBtn.addEventListener('click', () => {
+        // Redirect to Cloudflare Access logout URL
+        // This will clear the CF_Authorization cookie
+        window.location.href = '/cdn-cgi/access/logout';
+    });
+}
+
+// Initialize user menu when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeUserMenu);
+} else {
+    initializeUserMenu();
+}
