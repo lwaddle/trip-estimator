@@ -4,13 +4,61 @@
  * Integrates with Cloudflare Zero Trust for user authentication
  */
 
-// Helper function to get user from Cloudflare Access headers
+// Helper function to decode JWT token without verification
+// Cloudflare Access tokens are already verified by the Access layer
+function decodeJWT(token) {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            throw new Error('Invalid JWT format');
+        }
+
+        // Decode the payload (second part)
+        const payload = parts[1];
+        // Add padding if needed for base64url
+        const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const paddedBase64 = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+
+        const jsonPayload = atob(paddedBase64);
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        throw new Error('Failed to decode JWT: ' + e.message);
+    }
+}
+
+// Helper function to get user from Cloudflare Access JWT token
 function getUserFromRequest(request) {
-    // Cloudflare Access passes user email in the Cf-Access-Authenticated-User-Email header
-    const email = request.headers.get('Cf-Access-Authenticated-User-Email');
+    // Try header first (for API calls that might pass it)
+    let email = request.headers.get('Cf-Access-Authenticated-User-Email');
+
+    if (email) {
+        return email;
+    }
+
+    // Get JWT token from cookie
+    const cookieHeader = request.headers.get('Cookie');
+    if (!cookieHeader) {
+        throw new Error('No authentication cookie found');
+    }
+
+    // Parse cookies to find CF_Authorization
+    const cookies = {};
+    cookieHeader.split(';').forEach(cookie => {
+        const [name, ...rest] = cookie.trim().split('=');
+        cookies[name] = rest.join('=');
+    });
+
+    const token = cookies['CF_Authorization'];
+    if (!token) {
+        throw new Error('No CF_Authorization token found in cookies');
+    }
+
+    // Decode the JWT to extract user email
+    const payload = decodeJWT(token);
+    email = payload.email;
 
     if (!email) {
-        throw new Error('No authenticated user found');
+        throw new Error('No email found in authentication token');
     }
 
     return email;
