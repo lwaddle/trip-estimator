@@ -1491,7 +1491,7 @@ async function generatePDF() {
     const hourlyProgramsTotal = (maintenanceReserve + otherConsumables + additionalHourly) * (totalFlightMinutes / 60);
 
     let airportGroundTotal = 0;
-    ['landingFees', 'catering', 'handling', 'passengerGroundTransport', 'facilityFees', 'specialEventFees', 'rampParking', 'customs', 'hangar', 'otherAirportFees'].forEach(id => {
+    ['landingFees', 'catering', 'handling', 'passengerGroundTransport', 'facilityFees', 'specialEventFees', 'rampParking', 'customs', 'hangar', 'otherAirportCosts'].forEach(id => {
         airportGroundTotal += parseFloat(document.getElementById(id).value) || 0;
     });
 
@@ -1607,7 +1607,7 @@ async function generatePDF() {
             { id: 'rampParking', label: 'Ramp/Parking' },
             { id: 'customs', label: 'Customs' },
             { id: 'hangar', label: 'Hangar' },
-            { id: 'otherAirportFees', label: 'Other' }
+            { id: 'otherAirportCosts', label: 'Other' }
         ];
         airportFields.forEach(field => {
             const value = parseFloat(document.getElementById(field.id).value) || 0;
