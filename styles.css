@@ -1060,9 +1060,15 @@ input.needs-attention {
     align-items: center;
 }
 
-.header-content h1 {
-    margin-bottom: 0;
-    font-size: 24px;
+.header-logo {
+    display: flex;
+    align-items: center;
+}
+
+.logo-image {
+    height: 40px;
+    width: auto;
+    display: block;
 }
 
 .user-menu {
@@ -1162,9 +1168,12 @@ input.needs-attention {
         align-items: stretch;
     }
 
-    .header-content h1 {
-        font-size: 20px;
-        text-align: center;
+    .header-logo {
+        justify-content: center;
+    }
+
+    .logo-image {
+        height: 32px;
     }
 
     .user-menu {
