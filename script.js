@@ -1448,8 +1448,15 @@ async function generatePDF() {
     doc.text(today, pageWidth / 2, yPos, { align: 'center' });
     yPos += 12;
 
+    // Filter for active legs (legs with flight time or fuel burn)
+    const activeLegs = legs.filter(leg => {
+        const hasFuelBurn = (parseInt(leg.fuelBurn, 10) || 0) > 0;
+        const hasFlightTime = (parseInt(leg.hours, 10) || 0) > 0 || (parseInt(leg.minutes, 10) || 0) > 0;
+        return hasFuelBurn || hasFlightTime;
+    });
+
     // Calculate totals for summary cards
-    const totalFlightMinutes = legs.reduce((sum, leg) => {
+    const totalFlightMinutes = activeLegs.reduce((sum, leg) => {
         const hours = parseInt(leg.hours, 10) || 0;
         const minutes = parseInt(leg.minutes, 10) || 0;
         return sum + (hours * 60) + minutes;
@@ -1458,11 +1465,11 @@ async function generatePDF() {
     const totalMinutes = totalFlightMinutes % 60;
 
     const fuelDensity = parseFloat(document.getElementById('fuelDensity').value) || 6.70;
-    const totalFuelLbs = legs.reduce((sum, leg) => {
+    const totalFuelLbs = activeLegs.reduce((sum, leg) => {
         return sum + (parseInt(leg.fuelBurn, 10) || 0);
     }, 0);
-    const apuFuelBurn = legs.length > 0 ? (parseFloat(document.getElementById('apuFuelBurn').value) || 0) : 0;
-    const totalFuelGallons = ((totalFuelLbs + (apuFuelBurn * legs.length)) / fuelDensity).toFixed(1);
+    const apuFuelBurn = activeLegs.length > 0 ? (parseFloat(document.getElementById('apuFuelBurn').value) || 0) : 0;
+    const totalFuelGallons = ((totalFuelLbs + (apuFuelBurn * activeLegs.length)) / fuelDensity).toFixed(1);
 
     // Calculate grand total
     const fuelPrice = parseFloat(document.getElementById('fuelPrice').value) || 0;
@@ -1547,9 +1554,9 @@ async function generatePDF() {
     yPos += cardHeight + 10;
 
     // Flight Legs
-    if (legs.length > 0) {
+    if (activeLegs.length > 0) {
         addSectionHeader('FLIGHT LEGS');
-        legs.sort((a, b) => a.id - b.id).forEach((leg, index) => {
+        activeLegs.sort((a, b) => a.id - b.id).forEach((leg, index) => {
             const from = leg.from || '---';
             const to = leg.to || '---';
             const hours = parseInt(leg.hours, 10) || 0;
@@ -1593,7 +1600,7 @@ async function generatePDF() {
     }
 
     // Fuel
-    if (legs.length > 0) {
+    if (activeLegs.length > 0) {
         addSectionHeader('FUEL');
         addKeyValue('Total Fuel', totalFuelGallons + ' gal @ $' + fuelPrice + '/gal', 2);
         addKeyValue('Fuel Subtotal:', '$' + formatCurrency(fuelCost), 2);
