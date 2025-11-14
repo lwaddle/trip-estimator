@@ -1427,7 +1427,7 @@ async function generatePDF() {
             reader.readAsDataURL(logoBlob);
         });
 
-        doc.addImage(logoDataUrl, 'PNG', margin, yPos, 40, 19);
+        doc.addImage(logoDataUrl, 'PNG', margin, yPos, 27, 12.825);
         yPos += 22;
     } catch (err) {
         console.error('Failed to load logo:', err);
