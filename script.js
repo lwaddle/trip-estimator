@@ -1503,11 +1503,11 @@ async function generatePDF() {
     const costPerHour = totalFlightMinutes > 0 ? grandTotal / (totalFlightMinutes / 60) : 0;
 
     // Summary Cards
-    doc.setFillColor(245, 245, 245);
     const cardWidth = (contentWidth - 6) / 3;
     const cardHeight = 18;
 
     // Flight Time Card
+    doc.setFillColor(245, 245, 245);
     doc.roundedRect(margin, yPos, cardWidth, cardHeight, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
@@ -1519,6 +1519,7 @@ async function generatePDF() {
     doc.text(`${totalHours}h ${totalMinutes}m`, margin + cardWidth / 2, yPos + 14, { align: 'center' });
 
     // Fuel Card
+    doc.setFillColor(245, 245, 245);
     doc.roundedRect(margin + cardWidth + 3, yPos, cardWidth, cardHeight, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
@@ -1530,6 +1531,7 @@ async function generatePDF() {
     doc.text(`${totalFuelGallons} gal`, margin + cardWidth + 3 + cardWidth / 2, yPos + 14, { align: 'center' });
 
     // Cost Per Hour Card
+    doc.setFillColor(245, 245, 245);
     doc.roundedRect(margin + (cardWidth + 3) * 2, yPos, cardWidth, cardHeight, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
