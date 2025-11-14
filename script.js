@@ -1373,11 +1373,11 @@ async function generatePDF() {
     const contentWidth = pageWidth - (margin * 2);
     let yPos = margin;
 
-    // Colors
-    const primaryRed = '#bc282e';
-    const darkGray = '#334155';
-    const mediumGray = '#64748b';
-    const lightGray = '#e2e8f0';
+    // Colors (RGB format for jsPDF)
+    const primaryRed = [188, 40, 46];      // #bc282e
+    const darkGray = [51, 65, 85];         // #334155
+    const mediumGray = [100, 116, 139];    // #64748b
+    const lightGray = [226, 232, 240];     // #e2e8f0
 
     // Helper function to check if we need a new page
     function checkPageBreak(spaceNeeded) {
@@ -1392,14 +1392,14 @@ async function generatePDF() {
     // Helper function to add section header
     function addSectionHeader(title) {
         checkPageBreak(15);
-        doc.setFillColor(primaryRed);
+        doc.setFillColor(...primaryRed);
         doc.rect(margin, yPos, contentWidth, 8, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.text(title, margin + 2, yPos + 5.5);
         yPos += 12;
-        doc.setTextColor(darkGray);
+        doc.setTextColor(...darkGray);
     }
 
     // Helper function to add key-value pair
@@ -1407,10 +1407,10 @@ async function generatePDF() {
         checkPageBreak(6);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(mediumGray);
+        doc.setTextColor(...mediumGray);
         doc.text(key, margin + indent, yPos);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(darkGray);
+        doc.setTextColor(...darkGray);
         doc.text(value, pageWidth - margin, yPos, { align: 'right' });
         yPos += 5;
     }
@@ -1432,13 +1432,13 @@ async function generatePDF() {
     // Title and Date
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(darkGray);
+    doc.setTextColor(...darkGray);
     doc.text('Trip Estimate', pageWidth / 2, yPos, { align: 'center' });
     yPos += 8;
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(mediumGray);
+    doc.setTextColor(...mediumGray);
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     doc.text(today, pageWidth / 2, yPos, { align: 'center' });
     yPos += 12;
@@ -1506,33 +1506,33 @@ async function generatePDF() {
     doc.roundedRect(margin, yPos, cardWidth, cardHeight, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(mediumGray);
+    doc.setTextColor(...mediumGray);
     doc.text('Total Flight Time', margin + cardWidth / 2, yPos + 6, { align: 'center' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(primaryRed);
+    doc.setTextColor(...primaryRed);
     doc.text(`${totalHours}h ${totalMinutes}m`, margin + cardWidth / 2, yPos + 14, { align: 'center' });
 
     // Fuel Card
     doc.roundedRect(margin + cardWidth + 3, yPos, cardWidth, cardHeight, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(mediumGray);
+    doc.setTextColor(...mediumGray);
     doc.text('Total Fuel', margin + cardWidth + 3 + cardWidth / 2, yPos + 6, { align: 'center' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(primaryRed);
+    doc.setTextColor(...primaryRed);
     doc.text(`${totalFuelGallons} gal`, margin + cardWidth + 3 + cardWidth / 2, yPos + 14, { align: 'center' });
 
     // Cost Per Hour Card
     doc.roundedRect(margin + (cardWidth + 3) * 2, yPos, cardWidth, cardHeight, 2, 2, 'F');
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(mediumGray);
+    doc.setTextColor(...mediumGray);
     doc.text('Cost Per Hour', margin + (cardWidth + 3) * 2 + cardWidth / 2, yPos + 6, { align: 'center' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(primaryRed);
+    doc.setTextColor(...primaryRed);
     doc.text(`$${formatCurrency(costPerHour)}`, margin + (cardWidth + 3) * 2 + cardWidth / 2, yPos + 14, { align: 'center' });
 
     yPos += cardHeight + 10;
@@ -1551,10 +1551,10 @@ async function generatePDF() {
             checkPageBreak(6);
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
-            doc.setTextColor(darkGray);
+            doc.setTextColor(...darkGray);
             doc.text(`${from} → ${to}`, margin + 2, yPos);
             doc.setFont('helvetica', 'normal');
-            doc.setTextColor(mediumGray);
+            doc.setTextColor(...mediumGray);
             doc.text(`${hours}h ${minutes}m  •  ${gallons} gal`, pageWidth - margin, yPos, { align: 'right' });
             yPos += 5;
         });
@@ -1624,7 +1624,7 @@ async function generatePDF() {
     // Grand Total
     checkPageBreak(20);
     yPos += 5;
-    doc.setFillColor(primaryRed);
+    doc.setFillColor(...primaryRed);
     doc.rect(margin, yPos, contentWidth, 12, 'F');
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -1640,7 +1640,7 @@ async function generatePDF() {
         addSectionHeader('TRIP NOTES');
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(darkGray);
+        doc.setTextColor(...darkGray);
         const splitNotes = doc.splitTextToSize(tripNotes, contentWidth - 4);
         splitNotes.forEach(line => {
             checkPageBreak(5);
