@@ -6,7 +6,7 @@
 
 // Development mode - set to true to bypass authentication for testing
 // IMPORTANT: Set to false before deploying to production with Zero Trust
-const DEV_MODE = true;
+const DEV_MODE = false;
 const DEV_USER_EMAIL = 'dev@trip-estimator.local';
 
 // Helper function to get user from Cloudflare Access headers
