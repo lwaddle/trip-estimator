@@ -1495,8 +1495,8 @@ async function generatePDF() {
         airportGroundTotal += parseFloat(document.getElementById(id).value) || 0;
     });
 
-    const tripCoordination = parseFloat(document.getElementById('tripCoordination').value) || 0;
-    const otherMisc = parseFloat(document.getElementById('otherMisc').value) || 0;
+    const tripCoordination = parseFloat(document.getElementById('tripCoordinationFee').value) || 0;
+    const otherMisc = parseFloat(document.getElementById('otherMiscellaneous').value) || 0;
     const miscTotal = tripCoordination + otherMisc;
 
     const grandTotal = crewCost + crewExpenses + hourlyProgramsTotal + fuelCost + airportGroundTotal + miscTotal;
