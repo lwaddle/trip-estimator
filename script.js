@@ -1718,20 +1718,13 @@ function initializeSaveLoad() {
     const saveEstimateBtn = document.getElementById('saveEstimateBtn');
     const cancelSaveBtn = document.getElementById('cancelSaveBtn');
     const cancelLoadBtn = document.getElementById('cancelLoadBtn');
-    const importBtn = document.getElementById('importBtn');
     const estimateNameInput = document.getElementById('estimateName');
-    const exportSavedBtn = document.getElementById('exportSavedBtn');
-    const saveAnotherBtn = document.getElementById('saveAnotherBtn');
-    const exportCurrentBtn = document.getElementById('exportCurrentBtn');
     const closeSaveModalBtn = document.getElementById('closeSaveModalBtn');
     const saveFormView = document.getElementById('saveFormView');
     const saveSuccessView = document.getElementById('saveSuccessView');
     const saveFormButtons = document.getElementById('saveFormButtons');
     const saveSuccessButtons = document.getElementById('saveSuccessButtons');
     const savedEstimateName = document.getElementById('savedEstimateName');
-
-    // Track the last saved estimate ID for export
-    let lastSavedEstimateId = null;
 
     // Reset save modal to form view
     const resetSaveModal = () => {
@@ -1774,11 +1767,6 @@ function initializeSaveLoad() {
         loadModal.classList.remove('active');
     });
 
-    // Import estimate
-    importBtn.addEventListener('click', () => {
-        importEstimate();
-    });
-
     // Close modal when clicking outside
     window.addEventListener('click', (e) => {
         if (e.target === saveModal) {
@@ -1805,9 +1793,6 @@ function initializeSaveLoad() {
         try {
             const estimateId = await saveEstimate(name, false);
             if (estimateId) {
-                // Store the ID for export
-                lastSavedEstimateId = estimateId;
-
                 // Show success view
                 savedEstimateName.textContent = name;
                 saveFormView.style.display = 'none';
@@ -1829,71 +1814,6 @@ function initializeSaveLoad() {
         if (e.key === 'Enter') {
             doSave();
         }
-    });
-
-    // Export the saved estimate
-    exportSavedBtn.addEventListener('click', () => {
-        if (lastSavedEstimateId) {
-            exportEstimate(lastSavedEstimateId);
-        }
-    });
-
-    // Save another estimate
-    saveAnotherBtn.addEventListener('click', () => {
-        resetSaveModal();
-        setTimeout(() => estimateNameInput.focus(), 100);
-    });
-
-    // Export current state without saving
-    exportCurrentBtn.addEventListener('click', async () => {
-        const state = getCurrentEstimateState();
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        const filename = `trip-estimate-${timestamp}.json`;
-
-        const dataStr = JSON.stringify({
-            version: '1.0',
-            name: 'Unsaved Estimate',
-            data: state,
-            timestamp: Date.now()
-        }, null, 2);
-
-        const blob = new Blob([dataStr], { type: 'application/json' });
-
-        // Try Web Share API first (mobile-friendly)
-        if (navigator.canShare && navigator.share) {
-            const file = new File([blob], filename, { type: 'application/json' });
-
-            // Check if we can share files
-            if (navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({
-                        files: [file],
-                        title: 'Trip Estimate',
-                        text: 'Trip estimate export'
-                    });
-
-                    saveModal.classList.remove('active');
-                    setTimeout(resetSaveModal, 300);
-                    return;
-                } catch (err) {
-                    // User cancelled or share failed, fall through to download
-                    if (err.name !== 'AbortError') {
-                        console.log('Share failed:', err);
-                    }
-                }
-            }
-        }
-
-        // Fallback to traditional download
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-
-        saveModal.classList.remove('active');
-        setTimeout(resetSaveModal, 300);
     });
 
     // Close save modal from success view
@@ -1951,14 +1871,6 @@ async function displaySavedEstimates() {
             const estimateActions = document.createElement('div');
             estimateActions.className = 'estimate-actions';
 
-            const exportBtn = document.createElement('button');
-            exportBtn.className = 'btn-export-estimate';
-            exportBtn.textContent = 'Export';
-            exportBtn.onclick = (e) => {
-                e.stopPropagation();
-                exportEstimate(estimate.id);
-            };
-
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn-delete-estimate';
             deleteBtn.textContent = 'Delete';
@@ -1970,7 +1882,6 @@ async function displaySavedEstimates() {
                 }
             };
 
-            estimateActions.appendChild(exportBtn);
             estimateActions.appendChild(deleteBtn);
 
             estimateItem.appendChild(estimateInfo);
@@ -2026,169 +1937,6 @@ function formatEstimateDate(date) {
     }
 }
 
-// Export estimate to JSON file
-async function exportEstimate(estimateId) {
-    let estimate;
-
-    if (estimateId === 'current') {
-        // Export current form state
-        const state = getCurrentEstimateState();
-        estimate = {
-            version: '1.0',
-            exportDate: new Date().toISOString(),
-            name: 'Current Estimate',
-            data: state
-        };
-    } else {
-        // Export saved estimate from server
-        const savedEstimate = await getEstimate(estimateId);
-
-        if (!savedEstimate) {
-            alert('Estimate not found');
-            return;
-        }
-
-        estimate = {
-            version: '1.0',
-            exportDate: new Date().toISOString(),
-            name: savedEstimate.name,
-            originalTimestamp: savedEstimate.createdAt,
-            data: savedEstimate.data
-        };
-    }
-
-    // Create filename from estimate name
-    const filename = estimate.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '') + '.json';
-
-    // Create blob
-    const blob = new Blob([JSON.stringify(estimate, null, 2)], { type: 'application/json' });
-
-    // Try Web Share API first (mobile-friendly)
-    if (navigator.canShare && navigator.share) {
-        const file = new File([blob], filename, { type: 'application/json' });
-
-        // Check if we can share files
-        if (navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({
-                    files: [file],
-                    title: estimate.name,
-                    text: 'Trip estimate export'
-                });
-
-                // Show success message
-                const indicator = document.getElementById('autoSaveIndicator');
-                indicator.textContent = '✓ Shared!';
-                indicator.classList.add('visible');
-                setTimeout(() => {
-                    indicator.classList.remove('visible');
-                }, 2000);
-                return;
-            } catch (err) {
-                // User cancelled or share failed, fall through to download
-                if (err.name !== 'AbortError') {
-                    console.log('Share failed:', err);
-                }
-            }
-        }
-    }
-
-    // Fallback to traditional download
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    // Show success message
-    const indicator = document.getElementById('autoSaveIndicator');
-    indicator.textContent = '✓ Exported!';
-    indicator.classList.add('visible');
-    setTimeout(() => {
-        indicator.classList.remove('visible');
-    }, 2000);
-}
-
-// Import estimate from JSON file
-function importEstimate() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json,application/json';
-
-    input.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-
-        reader.onload = (event) => {
-            try {
-                const estimate = JSON.parse(event.target.result);
-
-                // Validate file format
-                if (!estimate.version || !estimate.data) {
-                    alert('Invalid file format. This does not appear to be a valid trip estimate file.');
-                    return;
-                }
-
-                // Check version compatibility
-                if (estimate.version !== '1.0') {
-                    if (!confirm(`This file was created with version ${estimate.version}. Continue anyway?`)) {
-                        return;
-                    }
-                }
-
-                // Validate required data structure
-                if (!estimate.data.legs || !estimate.data.crewMembers) {
-                    alert('Invalid file format. Required data is missing.');
-                    return;
-                }
-
-                // Show preview and confirm
-                const confirmMsg = `Import estimate: "${estimate.name}"?\n\n` +
-                    `Exported: ${new Date(estimate.exportDate).toLocaleString()}\n` +
-                    `Legs: ${estimate.data.legs.length}\n` +
-                    `Crew: ${estimate.data.crewMembers.length}`;
-
-                if (!confirm(confirmMsg)) {
-                    return;
-                }
-
-                // Apply the estimate
-                applyEstimateState(estimate.data);
-
-                // Close modal if open
-                document.getElementById('loadModal').classList.remove('active');
-
-                // Show success message
-                const indicator = document.getElementById('autoSaveIndicator');
-                indicator.textContent = '✓ Imported successfully!';
-                indicator.classList.add('visible');
-                setTimeout(() => {
-                    indicator.classList.remove('visible');
-                }, 2000);
-
-            } catch (err) {
-                console.error('Import error:', err);
-                alert('Failed to import file. The file may be corrupted or in an invalid format.');
-            }
-        };
-
-        reader.onerror = () => {
-            alert('Failed to read file.');
-        };
-
-        reader.readAsText(file);
-    };
-
-    input.click();
-}
 
 // ============================================
 // INFO ICON BOTTOM SHEET MODAL
