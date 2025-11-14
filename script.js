@@ -1629,11 +1629,11 @@ async function generatePDF() {
     // Grand Total
     checkPageBreak(20);
     yPos += 5;
-    doc.setFillColor(...darkGray);
+    doc.setFillColor(245, 245, 245);
     doc.rect(margin, yPos, contentWidth, 12, 'F');
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(...darkGray);
     doc.text('ESTIMATED TOTAL', margin + 2, yPos + 8);
     doc.text('$' + formatCurrency(grandTotal), pageWidth - margin - 2, yPos + 8, { align: 'right' });
     yPos += 16;
