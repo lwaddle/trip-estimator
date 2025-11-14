@@ -7,7 +7,7 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "DB"
 database_name = "trip-estimator-db"
-database_id = "YOUR_DATABASE_ID_HERE"
+database_id = "ed7fe206-4ab0-4b9e-82a3-4d9f2b5c3503"
 
 # Environment-specific configuration
 [env.production]
