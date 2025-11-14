@@ -1391,15 +1391,15 @@ async function generatePDF() {
 
     // Helper function to add section header
     function addSectionHeader(title) {
-        checkPageBreak(15);
-        doc.setFillColor(...primaryRed);
-        doc.rect(margin, yPos, contentWidth, 8, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(11);
+        checkPageBreak(10);
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text(title, margin + 2, yPos + 5.5);
-        yPos += 12;
         doc.setTextColor(...darkGray);
+        doc.text(title, margin, yPos);
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(...mediumGray);
+        doc.line(margin, yPos + 1, pageWidth - margin, yPos + 1);
+        yPos += 8;
     }
 
     // Helper function to add key-value pair
@@ -1515,7 +1515,7 @@ async function generatePDF() {
     doc.text('Total Flight Time', margin + cardWidth / 2, yPos + 6, { align: 'center' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryRed);
+    doc.setTextColor(...darkGray);
     doc.text(`${totalHours}h ${totalMinutes}m`, margin + cardWidth / 2, yPos + 14, { align: 'center' });
 
     // Fuel Card
@@ -1526,7 +1526,7 @@ async function generatePDF() {
     doc.text('Total Fuel', margin + cardWidth + 3 + cardWidth / 2, yPos + 6, { align: 'center' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryRed);
+    doc.setTextColor(...darkGray);
     doc.text(`${totalFuelGallons} gal`, margin + cardWidth + 3 + cardWidth / 2, yPos + 14, { align: 'center' });
 
     // Cost Per Hour Card
@@ -1537,7 +1537,7 @@ async function generatePDF() {
     doc.text('Cost Per Hour', margin + (cardWidth + 3) * 2 + cardWidth / 2, yPos + 6, { align: 'center' });
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryRed);
+    doc.setTextColor(...darkGray);
     doc.text(`$${formatCurrency(costPerHour)}`, margin + (cardWidth + 3) * 2 + cardWidth / 2, yPos + 14, { align: 'center' });
 
     yPos += cardHeight + 10;
@@ -1557,10 +1557,10 @@ async function generatePDF() {
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(...darkGray);
-            doc.text(`${from} → ${to}`, margin + 2, yPos);
+            doc.text(`${from} - ${to}`, margin + 2, yPos);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(...mediumGray);
-            doc.text(`${hours}h ${minutes}m  •  ${gallons} gal`, pageWidth - margin, yPos, { align: 'right' });
+            doc.text(`${hours}h ${minutes}m - ${gallons} gal`, pageWidth - margin, yPos, { align: 'right' });
             yPos += 5;
         });
         yPos += 3;
@@ -1629,7 +1629,7 @@ async function generatePDF() {
     // Grand Total
     checkPageBreak(20);
     yPos += 5;
-    doc.setFillColor(...primaryRed);
+    doc.setFillColor(...darkGray);
     doc.rect(margin, yPos, contentWidth, 12, 'F');
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
