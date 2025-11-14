@@ -42,7 +42,6 @@ jest-html-reporters-*.html
 .vercel/
 .netlify/
 cloudflare/
-functions/
 workers/
 
 # Output / generated
