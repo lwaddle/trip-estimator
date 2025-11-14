@@ -1461,20 +1461,22 @@ async function generatePDF() {
     const totalFuelLbs = legs.reduce((sum, leg) => {
         return sum + (parseInt(leg.fuelBurn, 10) || 0);
     }, 0);
-    const apuFuelBurn = parseFloat(document.getElementById('apuFuelBurn').value) || 0;
+    const apuFuelBurn = legs.length > 0 ? (parseFloat(document.getElementById('apuFuelBurn').value) || 0) : 0;
     const totalFuelGallons = ((totalFuelLbs + (apuFuelBurn * legs.length)) / fuelDensity).toFixed(1);
 
     // Calculate grand total
     const fuelPrice = parseFloat(document.getElementById('fuelPrice').value) || 0;
     const fuelCost = parseFloat(totalFuelGallons) * fuelPrice;
 
-    let crewCost = 0;
-    crewMembers.forEach(crew => {
-        const dailyRate = parseFloat(crew.dailyRate) || 0;
-        crewCost += dailyRate;
-    });
-
     const tripDays = parseInt(document.getElementById('tripDays').value) || 0;
+
+    let crewCost = 0;
+    if (tripDays > 0) {
+        crewMembers.forEach(crew => {
+            const dailyRate = parseFloat(crew.dailyRate) || 0;
+            crewCost += dailyRate;
+        });
+    }
     const hotelStays = parseInt(document.getElementById('hotelStays').value) || 0;
     const hotelRate = parseFloat(document.getElementById('hotelRate').value) || 0;
     const mealsRate = parseFloat(document.getElementById('mealsRate').value) || 0;
@@ -1569,7 +1571,7 @@ async function generatePDF() {
     }
 
     // Crew Costs
-    if (crewMembers.length > 0) {
+    if (crewMembers.length > 0 && tripDays > 0) {
         addSectionHeader('CREW COSTS');
         crewMembers.forEach(crew => {
             const role = crew.role || 'Crew Member';
