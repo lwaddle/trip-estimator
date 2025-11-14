@@ -1593,10 +1593,12 @@ async function generatePDF() {
     }
 
     // Fuel
-    addSectionHeader('FUEL');
-    addKeyValue('Total Fuel', totalFuelGallons + ' gal @ $' + fuelPrice + '/gal', 2);
-    addKeyValue('Fuel Subtotal:', '$' + formatCurrency(fuelCost), 2);
-    yPos += 2;
+    if (legs.length > 0) {
+        addSectionHeader('FUEL');
+        addKeyValue('Total Fuel', totalFuelGallons + ' gal @ $' + fuelPrice + '/gal', 2);
+        addKeyValue('Fuel Subtotal:', '$' + formatCurrency(fuelCost), 2);
+        yPos += 2;
+    }
 
     // Airport & Ground
     if (airportGroundTotal > 0) {
