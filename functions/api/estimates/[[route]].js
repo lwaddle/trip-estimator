@@ -4,32 +4,10 @@
  * Integrates with Cloudflare Zero Trust for user authentication
  */
 
-// Development mode - set to true to bypass authentication for testing
-// IMPORTANT: Set to false before deploying to production with Zero Trust
-const DEV_MODE = true;
-const DEV_USER_EMAIL = 'dev@trip-estimator.local';
-
 // Helper function to get user from Cloudflare Access headers
 function getUserFromRequest(request) {
-    // Development mode: use mock email for testing
-    if (DEV_MODE) {
-        console.log('[DEV MODE] Using development user:', DEV_USER_EMAIL);
-        return DEV_USER_EMAIL;
-    }
-
-    // DEBUG: Log all headers to troubleshoot authentication
-    console.log('[AUTH DEBUG] Request headers:');
-    for (const [key, value] of request.headers.entries()) {
-        if (key.toLowerCase().includes('cf-access') || key.toLowerCase().includes('auth')) {
-            console.log(`  ${key}: ${value}`);
-        }
-    }
-
-    // Production mode: require Cloudflare Access authentication
     // Cloudflare Access passes user email in the Cf-Access-Authenticated-User-Email header
     const email = request.headers.get('Cf-Access-Authenticated-User-Email');
-
-    console.log('[AUTH DEBUG] Extracted email:', email || 'NONE');
 
     if (!email) {
         throw new Error('No authenticated user found');
