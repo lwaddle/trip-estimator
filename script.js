@@ -1485,9 +1485,9 @@ async function generatePDF() {
 
     const crewExpenses = (hotelStays * hotelRate) + (tripDays * mealsRate) + (tripDays * otherRate) + rentalCar + airfare + mileage;
 
-    const maintenanceReserve = parseFloat(document.getElementById('maintenanceReserve').value) || 0;
+    const maintenanceReserve = parseFloat(document.getElementById('maintenancePrograms').value) || 0;
     const otherConsumables = parseFloat(document.getElementById('otherConsumables').value) || 0;
-    const additionalHourly = parseFloat(document.getElementById('additionalHourly').value) || 0;
+    const additionalHourly = parseFloat(document.getElementById('additional').value) || 0;
     const hourlyProgramsTotal = (maintenanceReserve + otherConsumables + additionalHourly) * (totalFlightMinutes / 60);
 
     let airportGroundTotal = 0;
