@@ -3,13 +3,22 @@ compatibility_date = "2024-01-01"
 
 pages_build_output_dir = "."
 
-# D1 Database binding
+# D1 Database binding (for CLI commands and local dev)
 [[d1_databases]]
 binding = "DB"
 database_name = "trip-estimator-db"
 database_id = "ed7fe206-4ab0-4b9e-82a3-4d9f2b5c3503"
 
-# Environment-specific configuration
+# D1 Database binding for production
 [env.production]
-# You'll get the database_id after creating the D1 database
-# Run: wrangler d1 create trip-estimator-db
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "trip-estimator-db"
+database_id = "ed7fe206-4ab0-4b9e-82a3-4d9f2b5c3503"
+
+# D1 Database binding for preview
+[env.preview]
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "trip-estimator-db"
+database_id = "ed7fe206-4ab0-4b9e-82a3-4d9f2b5c3503"
