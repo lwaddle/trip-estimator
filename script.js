@@ -2300,7 +2300,9 @@ async function displaySavedEstimates() {
     noEstimatesMessage.classList.remove('visible');
 
     try {
-        const { owned, shared } = await getSavedEstimates();
+        const result = await getSavedEstimates();
+        const owned = result.owned || [];
+        const shared = result.shared || [];
 
         estimatesList.innerHTML = '';
 
