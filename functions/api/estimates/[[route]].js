@@ -132,40 +132,75 @@ export async function onRequest(context) {
         // Route handling based on path and method
         const route = params.route ? params.route.join('/') : '';
 
-        // GET /api/estimates - List all estimates for user
+        // GET /api/estimates - List all estimates for user (owned + shared)
         if (method === 'GET' && !route) {
-            const estimates = await env.DB.prepare(
+            // Get owned estimates
+            const ownedEstimates = await env.DB.prepare(
                 'SELECT id, name, created_at, updated_at FROM estimates WHERE user_id = ? ORDER BY updated_at DESC'
             ).bind(user.id).all();
 
+            // Get estimates shared with user
+            const sharedEstimates = await env.DB.prepare(`
+                SELECT e.id, e.name, e.created_at, e.updated_at, u.email as owner_email
+                FROM estimates e
+                INNER JOIN estimate_shares s ON e.id = s.estimate_id
+                INNER JOIN users u ON e.user_id = u.id
+                WHERE s.shared_with_user_id = ?
+                ORDER BY e.updated_at DESC
+            `).bind(user.id).all();
+
             return jsonResponse({
-                estimates: estimates.results.map(est => ({
+                owned: ownedEstimates.results.map(est => ({
                     id: est.id,
                     name: est.name,
                     createdAt: est.created_at,
-                    updatedAt: est.updated_at
+                    updatedAt: est.updated_at,
+                    isOwner: true
+                })),
+                shared: sharedEstimates.results.map(est => ({
+                    id: est.id,
+                    name: est.name,
+                    createdAt: est.created_at,
+                    updatedAt: est.updated_at,
+                    isOwner: false,
+                    ownerEmail: est.owner_email
                 }))
             });
         }
 
-        // GET /api/estimates/:id - Get single estimate
-        if (method === 'GET' && route) {
+        // GET /api/estimates/:id - Get single estimate (requires ownership or share access)
+        if (method === 'GET' && route && !route.includes('/')) {
             const estimateId = route;
-            const estimate = await env.DB.prepare(
-                'SELECT * FROM estimates WHERE id = ? AND user_id = ?'
-            ).bind(estimateId, user.id).first();
+
+            // Check if user owns the estimate OR has it shared with them
+            const estimate = await env.DB.prepare(`
+                SELECT e.*, u.email as owner_email,
+                       CASE WHEN e.user_id = ? THEN 1 ELSE 0 END as is_owner
+                FROM estimates e
+                LEFT JOIN estimate_shares s ON e.id = s.estimate_id AND s.shared_with_user_id = ?
+                LEFT JOIN users u ON e.user_id = u.id
+                WHERE e.id = ? AND (e.user_id = ? OR s.id IS NOT NULL)
+            `).bind(user.id, user.id, estimateId, user.id).first();
 
             if (!estimate) {
                 return errorResponse('Estimate not found', 404);
             }
 
-            return jsonResponse({
+            const response = {
                 id: estimate.id,
                 name: estimate.name,
                 data: JSON.parse(estimate.estimate_data),
                 createdAt: estimate.created_at,
-                updatedAt: estimate.updated_at
-            });
+                updatedAt: estimate.updated_at,
+                isOwner: estimate.is_owner === 1
+            };
+
+            // Add owner email if this is a shared estimate
+            if (!response.isOwner) {
+                response.ownerEmail = estimate.owner_email;
+            }
+
+            return jsonResponse(response);
         }
 
         // POST /api/estimates - Create new estimate
@@ -243,7 +278,7 @@ export async function onRequest(context) {
         }
 
         // DELETE /api/estimates/:id - Delete estimate
-        if (method === 'DELETE' && route) {
+        if (method === 'DELETE' && route && !route.includes('/')) {
             const estimateId = route;
 
             const result = await env.DB.prepare(
@@ -255,6 +290,143 @@ export async function onRequest(context) {
             }
 
             return jsonResponse({ success: true });
+        }
+
+        // POST /api/estimates/:id/share - Share estimate with user by email
+        if (method === 'POST' && route.endsWith('/share')) {
+            const estimateId = route.replace('/share', '');
+            const body = await request.json();
+
+            if (!body.email) {
+                return errorResponse('Email is required');
+            }
+
+            // Verify user owns the estimate
+            const estimate = await env.DB.prepare(
+                'SELECT id FROM estimates WHERE id = ? AND user_id = ?'
+            ).bind(estimateId, user.id).first();
+
+            if (!estimate) {
+                return errorResponse('Estimate not found or you do not have permission to share it', 403);
+            }
+
+            // Prevent sharing with self
+            if (body.email.toLowerCase() === email.toLowerCase()) {
+                return errorResponse('Cannot share estimate with yourself', 400);
+            }
+
+            // Get or create recipient user
+            const recipient = await ensureUser(env.DB, body.email);
+
+            // Create share (INSERT OR IGNORE to handle duplicates gracefully)
+            await env.DB.prepare(
+                'INSERT OR IGNORE INTO estimate_shares (estimate_id, owner_user_id, shared_with_user_id) VALUES (?, ?, ?)'
+            ).bind(estimateId, user.id, recipient.id).run();
+
+            return jsonResponse({
+                success: true,
+                sharedWith: body.email
+            });
+        }
+
+        // DELETE /api/estimates/:id/share - Unshare estimate (revoke access)
+        if (method === 'DELETE' && route.includes('/share/')) {
+            const parts = route.split('/');
+            const estimateId = parts[0];
+            const sharedEmail = decodeURIComponent(parts[2]);
+
+            // Verify user owns the estimate
+            const estimate = await env.DB.prepare(
+                'SELECT id FROM estimates WHERE id = ? AND user_id = ?'
+            ).bind(estimateId, user.id).first();
+
+            if (!estimate) {
+                return errorResponse('Estimate not found or you do not have permission to manage sharing', 403);
+            }
+
+            // Get the user to unshare from
+            const recipient = await env.DB.prepare(
+                'SELECT id FROM users WHERE email = ?'
+            ).bind(sharedEmail).first();
+
+            if (!recipient) {
+                return errorResponse('User not found', 404);
+            }
+
+            // Remove the share
+            await env.DB.prepare(
+                'DELETE FROM estimate_shares WHERE estimate_id = ? AND owner_user_id = ? AND shared_with_user_id = ?'
+            ).bind(estimateId, user.id, recipient.id).run();
+
+            return jsonResponse({ success: true });
+        }
+
+        // GET /api/estimates/:id/shares - Get list of users estimate is shared with
+        if (method === 'GET' && route.endsWith('/shares')) {
+            const estimateId = route.replace('/shares', '');
+
+            // Verify user owns the estimate
+            const estimate = await env.DB.prepare(
+                'SELECT id FROM estimates WHERE id = ? AND user_id = ?'
+            ).bind(estimateId, user.id).first();
+
+            if (!estimate) {
+                return errorResponse('Estimate not found or you do not have permission to view sharing', 403);
+            }
+
+            // Get list of shared users
+            const shares = await env.DB.prepare(`
+                SELECT u.email, s.shared_at
+                FROM estimate_shares s
+                INNER JOIN users u ON s.shared_with_user_id = u.id
+                WHERE s.estimate_id = ? AND s.owner_user_id = ?
+                ORDER BY s.shared_at DESC
+            `).bind(estimateId, user.id).all();
+
+            return jsonResponse({
+                shares: shares.results.map(share => ({
+                    email: share.email,
+                    sharedAt: share.shared_at
+                }))
+            });
+        }
+
+        // POST /api/estimates/:id/copy - Create a copy of an estimate
+        if (method === 'POST' && route.endsWith('/copy')) {
+            const estimateId = route.replace('/copy', '');
+
+            // Check if user has access to this estimate (owner OR shared)
+            const estimate = await env.DB.prepare(`
+                SELECT e.*
+                FROM estimates e
+                LEFT JOIN estimate_shares s ON e.id = s.estimate_id AND s.shared_with_user_id = ?
+                WHERE e.id = ? AND (e.user_id = ? OR s.id IS NOT NULL)
+            `).bind(user.id, estimateId, user.id).first();
+
+            if (!estimate) {
+                return errorResponse('Estimate not found or you do not have access to it', 404);
+            }
+
+            // Generate new ID for the copy
+            const newEstimateId = `est_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const newName = `Copy of ${estimate.name}`;
+
+            // Create the copy
+            await env.DB.prepare(
+                'INSERT INTO estimates (id, user_id, name, estimate_data, created_at, updated_at) VALUES (?, ?, ?, ?, unixepoch(), unixepoch())'
+            ).bind(
+                newEstimateId,
+                user.id,
+                newName,
+                estimate.estimate_data
+            ).run();
+
+            return jsonResponse({
+                id: newEstimateId,
+                name: newName,
+                createdAt: Math.floor(Date.now() / 1000),
+                updatedAt: Math.floor(Date.now() / 1000)
+            }, 201);
         }
 
         // Method not allowed
