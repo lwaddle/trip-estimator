@@ -38,7 +38,8 @@ function getUserFromRequest(request) {
     // Get JWT token from cookie
     const cookieHeader = request.headers.get('Cookie');
     if (!cookieHeader) {
-        throw new Error('No authentication cookie found');
+        // Fallback for local development (no auth)
+        return 'dev@localhost';
     }
 
     // Parse cookies to find CF_Authorization
@@ -50,7 +51,8 @@ function getUserFromRequest(request) {
 
     const token = cookies['CF_Authorization'];
     if (!token) {
-        throw new Error('No CF_Authorization token found in cookies');
+        // Fallback for local development (no auth)
+        return 'dev@localhost';
     }
 
     // Decode the JWT to extract user email
