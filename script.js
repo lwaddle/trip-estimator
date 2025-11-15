@@ -32,6 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize save/load functionality
     initializeSaveLoad();
 
+    // Initialize share modal
+    initializeShareModal();
+
     // Handle info icon clicks for mobile tooltip
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('info-icon')) {
@@ -1751,6 +1754,7 @@ const AUTO_SAVE_INTERVAL = 120000; // 2 minutes
 // Auto-save tracking
 let autoSaveTimer = null;
 let currentEstimateId = null; // Track the current estimate being worked on
+let currentEstimateIsOwned = true; // Track if current user owns the loaded estimate
 
 // Get current estimate state
 function getCurrentEstimateState() {
@@ -1908,10 +1912,13 @@ async function apiCall(endpoint, options = {}) {
 async function getSavedEstimates() {
     try {
         const result = await apiCall('');
-        return result.estimates || [];
+        return {
+            owned: result.owned || [],
+            shared: result.shared || []
+        };
     } catch (e) {
         console.error('Failed to load saved estimates:', e);
-        return [];
+        return { owned: [], shared: [] };
     }
 }
 
@@ -1928,6 +1935,14 @@ async function getEstimate(estimateId) {
 
 // Save estimate to server
 async function saveEstimate(name, isAutoSave = false) {
+    // Don't allow saving if viewing a read-only estimate
+    if (!currentEstimateIsOwned && currentEstimateId) {
+        if (!isAutoSave) {
+            alert('This is a read-only estimate. Use "Copy Estimate" to create your own editable version.');
+        }
+        return null;
+    }
+
     const state = getCurrentEstimateState();
 
     try {
@@ -1995,6 +2010,15 @@ async function loadEstimate(estimateId) {
         if (estimate && estimate.data) {
             applyEstimateState(estimate.data);
             currentEstimateId = estimateId; // Track which estimate we're working on
+            currentEstimateIsOwned = estimate.isOwner; // Track ownership
+
+            // Show/hide read-only banner based on ownership
+            if (!estimate.isOwner) {
+                showReadOnlyBanner(estimate.ownerEmail);
+            } else {
+                hideReadOnlyBanner();
+            }
+
             return true;
         }
 
@@ -2167,6 +2191,104 @@ function initializeSaveLoad() {
     startAutoSave();
 }
 
+// Helper function to create estimate item element
+function createEstimateItem(estimate, isOwned) {
+    const estimateItem = document.createElement('div');
+    estimateItem.className = 'estimate-item';
+
+    // Add read-only class if not owned
+    if (!isOwned) {
+        estimateItem.classList.add('read-only-estimate');
+    }
+
+    const estimateInfo = document.createElement('div');
+    estimateInfo.className = 'estimate-info';
+
+    const estimateName = document.createElement('div');
+    estimateName.className = 'estimate-name';
+    estimateName.textContent = estimate.name;
+
+    const estimateDate = document.createElement('div');
+    estimateDate.className = 'estimate-date';
+    // API returns unix timestamps (seconds), convert to milliseconds
+    const date = new Date(estimate.updatedAt * 1000);
+    estimateDate.textContent = formatEstimateDate(date);
+
+    // Add owner email if this is a shared estimate
+    if (!isOwned && estimate.ownerEmail) {
+        const ownerInfo = document.createElement('div');
+        ownerInfo.className = 'estimate-owner';
+        ownerInfo.textContent = `Shared by ${estimate.ownerEmail}`;
+        estimateInfo.appendChild(estimateName);
+        estimateInfo.appendChild(estimateDate);
+        estimateInfo.appendChild(ownerInfo);
+    } else {
+        estimateInfo.appendChild(estimateName);
+        estimateInfo.appendChild(estimateDate);
+    }
+
+    const estimateActions = document.createElement('div');
+    estimateActions.className = 'estimate-actions';
+
+    if (isOwned) {
+        // Add share button for owned estimates
+        const shareBtn = document.createElement('button');
+        shareBtn.className = 'btn-share-estimate';
+        shareBtn.textContent = 'Share';
+        shareBtn.onclick = async (e) => {
+            e.stopPropagation();
+            openShareModal(estimate.id, estimate.name);
+        };
+        estimateActions.appendChild(shareBtn);
+
+        // Add delete button for owned estimates
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-delete-estimate';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.onclick = async (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete "${estimate.name}"?`)) {
+                await deleteEstimate(estimate.id);
+                await displaySavedEstimates();
+            }
+        };
+        estimateActions.appendChild(deleteBtn);
+    } else {
+        // Add copy button for shared estimates
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn-copy-estimate';
+        copyBtn.textContent = 'Copy';
+        copyBtn.onclick = async (e) => {
+            e.stopPropagation();
+            await copyEstimate(estimate.id, estimate.name);
+        };
+        estimateActions.appendChild(copyBtn);
+    }
+
+    estimateItem.appendChild(estimateInfo);
+    estimateItem.appendChild(estimateActions);
+
+    // Load on click
+    estimateItem.addEventListener('click', async () => {
+        const success = await loadEstimate(estimate.id);
+        if (success) {
+            document.getElementById('loadModal').classList.remove('active');
+
+            // Show success message
+            const indicator = document.getElementById('autoSaveIndicator');
+            indicator.textContent = '✓ Estimate loaded!';
+            indicator.classList.add('visible');
+            setTimeout(() => {
+                indicator.classList.remove('visible');
+            }, 2000);
+        } else {
+            alert('Failed to load estimate');
+        }
+    });
+
+    return estimateItem;
+}
+
 // Display saved estimates in load modal
 async function displaySavedEstimates() {
     const estimatesList = document.getElementById('estimatesList');
@@ -2178,76 +2300,52 @@ async function displaySavedEstimates() {
     noEstimatesMessage.classList.remove('visible');
 
     try {
-        const estimates = await getSavedEstimates();
+        const { owned, shared } = await getSavedEstimates();
 
         estimatesList.innerHTML = '';
 
-        if (estimates.length === 0) {
+        const hasEstimates = owned.length > 0 || shared.length > 0;
+
+        if (!hasEstimates) {
             noEstimatesMessage.classList.add('visible');
             estimatesList.style.display = 'none';
         } else {
             noEstimatesMessage.classList.remove('visible');
             estimatesList.style.display = 'block';
 
-            estimates.forEach(estimate => {
-            const estimateItem = document.createElement('div');
-            estimateItem.className = 'estimate-item';
+            // Display "My Estimates" section
+            if (owned.length > 0) {
+                const ownedSection = document.createElement('div');
+                ownedSection.className = 'estimates-section';
 
-            const estimateInfo = document.createElement('div');
-            estimateInfo.className = 'estimate-info';
+                const ownedHeader = document.createElement('h3');
+                ownedHeader.className = 'estimates-section-header';
+                ownedHeader.textContent = 'My Estimates';
+                ownedSection.appendChild(ownedHeader);
 
-            const estimateName = document.createElement('div');
-            estimateName.className = 'estimate-name';
-            estimateName.textContent = estimate.name;
+                owned.forEach(estimate => {
+                    ownedSection.appendChild(createEstimateItem(estimate, true));
+                });
 
-            const estimateDate = document.createElement('div');
-            estimateDate.className = 'estimate-date';
-            // API returns unix timestamps (seconds), convert to milliseconds
-            const date = new Date(estimate.updatedAt * 1000);
-            estimateDate.textContent = formatEstimateDate(date);
+                estimatesList.appendChild(ownedSection);
+            }
 
-            estimateInfo.appendChild(estimateName);
-            estimateInfo.appendChild(estimateDate);
+            // Display "Shared With Me" section
+            if (shared.length > 0) {
+                const sharedSection = document.createElement('div');
+                sharedSection.className = 'estimates-section';
 
-            const estimateActions = document.createElement('div');
-            estimateActions.className = 'estimate-actions';
+                const sharedHeader = document.createElement('h3');
+                sharedHeader.className = 'estimates-section-header';
+                sharedHeader.textContent = 'Shared With Me';
+                sharedSection.appendChild(sharedHeader);
 
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'btn-delete-estimate';
-            deleteBtn.textContent = 'Delete';
-            deleteBtn.onclick = async (e) => {
-                e.stopPropagation();
-                if (confirm(`Delete "${estimate.name}"?`)) {
-                    await deleteEstimate(estimate.id);
-                    await displaySavedEstimates();
-                }
-            };
+                shared.forEach(estimate => {
+                    sharedSection.appendChild(createEstimateItem(estimate, false));
+                });
 
-            estimateActions.appendChild(deleteBtn);
-
-            estimateItem.appendChild(estimateInfo);
-            estimateItem.appendChild(estimateActions);
-
-            // Load on click
-            estimateItem.addEventListener('click', async () => {
-                const success = await loadEstimate(estimate.id);
-                if (success) {
-                    document.getElementById('loadModal').classList.remove('active');
-
-                    // Show success message
-                    const indicator = document.getElementById('autoSaveIndicator');
-                    indicator.textContent = '✓ Estimate loaded!';
-                    indicator.classList.add('visible');
-                    setTimeout(() => {
-                        indicator.classList.remove('visible');
-                    }, 2000);
-                } else {
-                    alert('Failed to load estimate');
-                }
-            });
-
-            estimatesList.appendChild(estimateItem);
-        });
+                estimatesList.appendChild(sharedSection);
+            }
         }
     } catch (e) {
         console.error('Failed to display estimates:', e);
@@ -2278,6 +2376,236 @@ function formatEstimateDate(date) {
     }
 }
 
+
+// ============================================
+// READ-ONLY BANNER & SHARING FUNCTIONALITY
+// ============================================
+
+// Show read-only banner when viewing shared estimate
+function showReadOnlyBanner(ownerEmail) {
+    let banner = document.getElementById('readOnlyBanner');
+    if (!banner) {
+        // Create banner if it doesn't exist
+        banner = document.createElement('div');
+        banner.id = 'readOnlyBanner';
+        banner.className = 'read-only-banner';
+        document.querySelector('.estimate-container').insertBefore(banner, document.querySelector('.estimate-container').firstChild);
+    }
+    banner.innerHTML = `
+        <span class="read-only-icon">🔒</span>
+        <span class="read-only-text">You're viewing <strong>${ownerEmail}</strong>'s estimate (read-only). Use "Copy Estimate" to create your own editable version.</span>
+    `;
+    banner.style.display = 'flex';
+}
+
+// Hide read-only banner
+function hideReadOnlyBanner() {
+    const banner = document.getElementById('readOnlyBanner');
+    if (banner) {
+        banner.style.display = 'none';
+    }
+}
+
+// Copy estimate (create editable copy)
+async function copyEstimate(estimateId, estimateName) {
+    try {
+        const result = await apiCall(`/${estimateId}/copy`, {
+            method: 'POST'
+        });
+
+        if (result && result.id) {
+            // Show success message
+            alert(`Estimate copied successfully as "${result.name}". Loading your copy now...`);
+
+            // Load the new copy
+            const success = await loadEstimate(result.id);
+            if (success) {
+                // Close load modal if open
+                const loadModal = document.getElementById('loadModal');
+                if (loadModal.classList.contains('active')) {
+                    loadModal.classList.remove('active');
+                }
+
+                // Refresh the estimates list
+                await displaySavedEstimates();
+            }
+        }
+    } catch (e) {
+        console.error('Failed to copy estimate:', e);
+        alert('Failed to copy estimate. Please try again.');
+    }
+}
+
+// Open share modal
+async function openShareModal(estimateId, estimateName) {
+    const modal = document.getElementById('shareModal');
+    if (!modal) {
+        console.error('Share modal not found');
+        return;
+    }
+
+    // Store current estimate ID in modal
+    modal.dataset.estimateId = estimateId;
+    modal.dataset.estimateName = estimateName;
+
+    // Update modal title
+    document.getElementById('shareModalTitle').textContent = `Share: ${estimateName}`;
+
+    // Load current shares
+    await loadSharedUsers(estimateId);
+
+    // Show modal
+    modal.classList.add('active');
+}
+
+// Load list of users estimate is shared with
+async function loadSharedUsers(estimateId) {
+    const sharedUsersList = document.getElementById('sharedUsersList');
+
+    try {
+        const result = await apiCall(`/${estimateId}/shares`);
+        const shares = result.shares || [];
+
+        if (shares.length === 0) {
+            sharedUsersList.innerHTML = '<div class="no-shares-message">Not currently shared with anyone</div>';
+        } else {
+            sharedUsersList.innerHTML = '';
+            shares.forEach(share => {
+                const shareItem = document.createElement('div');
+                shareItem.className = 'share-item';
+
+                const emailSpan = document.createElement('span');
+                emailSpan.className = 'share-email';
+                emailSpan.textContent = share.email;
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn-remove-share';
+                removeBtn.textContent = 'Remove';
+                removeBtn.onclick = async () => {
+                    await unshareEstimate(estimateId, share.email);
+                };
+
+                shareItem.appendChild(emailSpan);
+                shareItem.appendChild(removeBtn);
+                sharedUsersList.appendChild(shareItem);
+            });
+        }
+    } catch (e) {
+        console.error('Failed to load shared users:', e);
+        sharedUsersList.innerHTML = '<div class="error-message">Failed to load sharing information</div>';
+    }
+}
+
+// Share estimate with user
+async function shareEstimate(estimateId, email) {
+    try {
+        await apiCall(`/${estimateId}/share`, {
+            method: 'POST',
+            body: JSON.stringify({ email })
+        });
+
+        // Show success message
+        const indicator = document.getElementById('autoSaveIndicator');
+        indicator.textContent = `✓ Shared with ${email}`;
+        indicator.classList.add('visible');
+        setTimeout(() => {
+            indicator.classList.remove('visible');
+        }, 2000);
+
+        // Reload shared users list
+        await loadSharedUsers(estimateId);
+
+        // Clear input
+        document.getElementById('shareEmailInput').value = '';
+    } catch (e) {
+        console.error('Failed to share estimate:', e);
+        alert(e.message || 'Failed to share estimate. Please check the email and try again.');
+    }
+}
+
+// Unshare estimate (remove access)
+async function unshareEstimate(estimateId, email) {
+    if (!confirm(`Remove access for ${email}?`)) {
+        return;
+    }
+
+    try {
+        await apiCall(`/${estimateId}/share/${encodeURIComponent(email)}`, {
+            method: 'DELETE'
+        });
+
+        // Show success message
+        const indicator = document.getElementById('autoSaveIndicator');
+        indicator.textContent = `✓ Removed access for ${email}`;
+        indicator.classList.add('visible');
+        setTimeout(() => {
+            indicator.classList.remove('visible');
+        }, 2000);
+
+        // Reload shared users list
+        await loadSharedUsers(estimateId);
+    } catch (e) {
+        console.error('Failed to unshare estimate:', e);
+        alert('Failed to remove access. Please try again.');
+    }
+}
+
+// Initialize share modal
+function initializeShareModal() {
+    const modal = document.getElementById('shareModal');
+    if (!modal) return;
+
+    const closeBtn = document.getElementById('shareModalClose');
+    const cancelBtn = document.getElementById('cancelShareBtn');
+    const shareBtn = document.getElementById('shareEstimateBtn');
+    const emailInput = document.getElementById('shareEmailInput');
+
+    // Close modal handlers
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('active');
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        modal.classList.remove('active');
+    });
+
+    // Close on outside click
+    window.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+        }
+    });
+
+    // Share button handler
+    shareBtn.addEventListener('click', async () => {
+        const email = emailInput.value.trim();
+        if (!email) {
+            alert('Please enter an email address');
+            return;
+        }
+
+        // Basic email validation
+        if (!email.includes('@')) {
+            alert('Please enter a valid email address');
+            return;
+        }
+
+        const estimateId = modal.dataset.estimateId;
+        if (!estimateId) {
+            alert('Error: No estimate selected');
+            return;
+        }
+
+        await shareEstimate(estimateId, email);
+    });
+
+    // Allow Enter key to share
+    emailInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            shareBtn.click();
+        }
+    });
+}
 
 // ============================================
 // INFO ICON BOTTOM SHEET MODAL

@@ -516,6 +516,32 @@
         </div>
     </div>
 
+    <!-- Share Estimate Modal -->
+    <div id="shareModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="shareModalTitle">Share Estimate</h3>
+                <span class="modal-close" id="shareModalClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="share-input-group">
+                    <label for="shareEmailInput">Share with email:</label>
+                    <div class="share-input-row">
+                        <input type="email" id="shareEmailInput" placeholder="colleague@example.com">
+                        <button id="shareEstimateBtn" class="btn-action btn-primary">Add</button>
+                    </div>
+                </div>
+                <div class="shared-users-section">
+                    <h4>Shared with:</h4>
+                    <div id="sharedUsersList"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelShareBtn" class="btn-action btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Info Icon Bottom Sheet Modal -->
     <div id="infoBottomSheet" class="bottom-sheet-modal">
         <div class="bottom-sheet-backdrop"></div>
